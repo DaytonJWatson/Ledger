@@ -4,6 +4,8 @@ import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.economy.BankService;
 import com.daytonjwatson.ledger.economy.DeathPenaltyListener;
 import com.daytonjwatson.ledger.economy.MoneyService;
+import com.daytonjwatson.ledger.farming.CropHarvestListener;
+import com.daytonjwatson.ledger.farming.SoilFatigueService;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
 import com.daytonjwatson.ledger.market.DepletionListener;
@@ -13,6 +15,8 @@ import com.daytonjwatson.ledger.market.MarketStorageYaml;
 import com.daytonjwatson.ledger.market.ScarcityWindowService;
 import com.daytonjwatson.ledger.mobs.MobKillListener;
 import com.daytonjwatson.ledger.mobs.MobPayoutService;
+import com.daytonjwatson.ledger.spawn.AnimalSellListener;
+import com.daytonjwatson.ledger.spawn.AnimalSellService;
 import com.daytonjwatson.ledger.spawn.SpawnInteractionListener;
 import com.daytonjwatson.ledger.spawn.SpawnRegionService;
 import com.daytonjwatson.ledger.tools.RepairService;
@@ -44,6 +48,8 @@ public class LedgerPlugin extends JavaPlugin {
 	private MobPayoutService mobPayoutService;
 	private SilkTouchMarkService silkTouchMarkService;
 	private ScarcityWindowService scarcityWindowService;
+	private SoilFatigueService soilFatigueService;
+	private AnimalSellService animalSellService;
 	
 	@Override
 	public void onEnable() {
@@ -62,17 +68,22 @@ public class LedgerPlugin extends JavaPlugin {
 		this.upgradeService = new UpgradeService(configManager, moneyService, spawnRegionService);
 		this.silkTouchMarkService = new SilkTouchMarkService(this);
 		this.scarcityWindowService = new ScarcityWindowService(configManager);
-		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService, scarcityWindowService);
+		this.soilFatigueService = new SoilFatigueService(this, configManager);
+		soilFatigueService.load();
+		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService, scarcityWindowService, soilFatigueService);
 		this.bankService = new BankService(spawnRegionService, moneyService);
 		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService);
 		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this), spawnRegionService, toolVendorService);
 		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
+		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
 
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService), this);
 		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
-		Bukkit.getPluginManager().registerEvents(new MobKillListener(mobPayoutService, moneyService), this);
+		Bukkit.getPluginManager().registerEvents(new MobKillListener(configManager, mobPayoutService, moneyService), this);
 		Bukkit.getPluginManager().registerEvents(new DepletionListener(configManager, marketService), this);
+		Bukkit.getPluginManager().registerEvents(new CropHarvestListener(soilFatigueService), this);
+		Bukkit.getPluginManager().registerEvents(new AnimalSellListener(animalSellService), this);
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
@@ -90,6 +101,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
 			moneyService.save();
 			marketStorage.save();
+			soilFatigueService.save();
 		}, 20L * 60, 20L * 60);
 	}
 
@@ -100,6 +112,9 @@ public class LedgerPlugin extends JavaPlugin {
 		}
 		if (marketStorage != null) {
 			marketStorage.save();
+		}
+		if (soilFatigueService != null) {
+			soilFatigueService.save();
 		}
 	}
 }

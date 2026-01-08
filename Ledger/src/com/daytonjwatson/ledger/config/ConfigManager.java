@@ -77,6 +77,10 @@ public class ConfigManager {
 		yaml.set("mob.spawnerMultiplier", 0.20);
 		yaml.set("mob.sameChunkMultiplier", 0.60);
 		yaml.set("mob.sameChunkWindowSeconds", 45);
+		yaml.set("farming.fatigue.perHarvest", 0.12);
+		yaml.set("farming.fatigue.recoveryPerDay", 0.18);
+		yaml.set("farming.fatigue.minMultiplier", 0.25);
+		yaml.set("farming.fatigue.pruneDays", 14.0);
 		writeYaml(file, yaml);
 	}
 
@@ -176,6 +180,11 @@ public class ConfigManager {
 		createPrice(mobsSection, "entity:SKELETON", 14.0, 5000, 0.0, 0.0, false);
 		createPrice(mobsSection, "entity:CREEPER", 20.0, 4000, 0.0, 0.0, false);
 		createPrice(mobsSection, "entity:SPIDER", 10.0, 5000, 0.0, 0.0, false);
+		createPrice(mobsSection, "entity:COW", 22.0, 4500, 0.0, 0.0, false);
+		createPrice(mobsSection, "entity:PIG", 18.0, 4500, 0.0, 0.0, false);
+		createPrice(mobsSection, "entity:SHEEP", 20.0, 4500, 0.0, 0.0, false);
+		createPrice(mobsSection, "entity:CHICKEN", 14.0, 5000, 0.0, 0.0, false);
+		createPrice(mobsSection, "entity:RABBIT", 16.0, 5000, 0.0, 0.0, false);
 		writeYaml(file, yaml);
 	}
 
@@ -239,6 +248,12 @@ public class ConfigManager {
 		yaml.set("max.x", 10);
 		yaml.set("max.y", 255);
 		yaml.set("max.z", 10);
+		yaml.set("animalPen.min.x", -4);
+		yaml.set("animalPen.min.y", 0);
+		yaml.set("animalPen.min.z", -4);
+		yaml.set("animalPen.max.x", 4);
+		yaml.set("animalPen.max.y", 255);
+		yaml.set("animalPen.max.z", 4);
 		writeYaml(file, yaml);
 	}
 
