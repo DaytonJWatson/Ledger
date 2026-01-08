@@ -24,16 +24,17 @@ public class GuiListener implements Listener {
 		if (!(event.getWhoClicked() instanceof Player)) {
 			return;
 		}
-		event.setCancelled(true);
 		Player player = (Player) event.getWhoClicked();
 		MenuId menuId = guiManager.resolveMenuId(view, player.getUniqueId());
 		if (menuId != null) {
 			LedgerMenu menu = guiManager.getMenu(menuId);
 			if (menu != null) {
-				menu.onClick(player, event.getRawSlot(), event.getCurrentItem(), event.getClick());
+				event.setCancelled(menu.cancelAllClicks());
+				menu.onClick(player, event.getRawSlot(), event.getCurrentItem(), event.getClick(), event);
 				return;
 			}
 		}
+		event.setCancelled(true);
 	}
 
 	@EventHandler
@@ -45,8 +46,15 @@ public class GuiListener implements Listener {
 
 	@EventHandler
 	public void onInventoryClose(InventoryCloseEvent event) {
-		if (event.getPlayer() instanceof Player) {
-			guiManager.clearSession(event.getPlayer().getUniqueId());
+		if (event.getPlayer() instanceof Player player) {
+			MenuId menuId = guiManager.resolveMenuId(event.getView(), player.getUniqueId());
+			if (menuId != null) {
+				LedgerMenu menu = guiManager.getMenu(menuId);
+				if (menu != null) {
+					menu.onClose(player, event.getView().getTopInventory());
+				}
+			}
+			guiManager.clearSession(player.getUniqueId());
 		}
 	}
 }

@@ -99,7 +99,7 @@ public class LedgerPlugin extends JavaPlugin {
 		guiManager.register(new SellMenu(guiManager, marketService, sellService));
 		guiManager.register(new BankMenu(guiManager, moneyService, bankService, spawnRegionService));
 		guiManager.register(new ToolsMenu(guiManager, moneyService, toolVendorService, spawnRegionService));
-		guiManager.register(new RepairMenu(guiManager, moneyService, repairService, toolMetaService, toolVendorService));
+		guiManager.register(new RepairMenu(guiManager, moneyService, repairService, toolMetaService, toolVendorService, this));
 		guiManager.register(new UpgradesMenu(guiManager, upgradeService, moneyService));
 
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService, guiManager, configManager), this);

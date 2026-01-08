@@ -9,6 +9,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -45,7 +46,7 @@ public class HubMenu implements LedgerMenu {
 	}
 
 	@Override
-	public void onClick(Player player, int slot, ItemStack clicked, ClickType type) {
+	public void onClick(Player player, int slot, ItemStack clicked, ClickType type, InventoryClickEvent event) {
 		switch (slot) {
 			case 10 -> guiManager.open(MenuId.SELL, player);
 			case 12 -> guiManager.open(MenuId.BANK, player);

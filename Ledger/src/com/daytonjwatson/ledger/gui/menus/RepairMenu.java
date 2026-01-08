@@ -14,20 +14,23 @@ import com.daytonjwatson.ledger.tools.ToolVendorService.ToolType;
 import com.daytonjwatson.ledger.tools.ToolVendorService.ToolVariant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
 public class RepairMenu implements LedgerMenu {
 	private static final int MENU_SIZE = 27;
-	private static final int SLOT_PREVIEW = 11;
+	private static final int SLOT_ITEM = 11;
 	private static final int SLOT_INFO = 15;
 	private static final int SLOT_BACK = 18;
 	private static final int SLOT_REPAIR = 22;
@@ -37,14 +40,16 @@ public class RepairMenu implements LedgerMenu {
 	private final RepairService repairService;
 	private final ToolMetaService toolMetaService;
 	private final ToolVendorService toolVendorService;
+	private final JavaPlugin plugin;
 	private final ItemStack fillerItem;
 
-	public RepairMenu(GuiManager guiManager, MoneyService moneyService, RepairService repairService, ToolMetaService toolMetaService, ToolVendorService toolVendorService) {
+	public RepairMenu(GuiManager guiManager, MoneyService moneyService, RepairService repairService, ToolMetaService toolMetaService, ToolVendorService toolVendorService, JavaPlugin plugin) {
 		this.guiManager = guiManager;
 		this.moneyService = moneyService;
 		this.repairService = repairService;
 		this.toolMetaService = toolMetaService;
 		this.toolVendorService = toolVendorService;
+		this.plugin = plugin;
 		this.fillerItem = createFillerItem();
 	}
 
@@ -59,68 +64,176 @@ public class RepairMenu implements LedgerMenu {
 		for (int slot = 0; slot < MENU_SIZE; slot++) {
 			inventory.setItem(slot, fillerItem);
 		}
-		ItemStack held = player.getInventory().getItemInMainHand();
-		if (!isSupportedTool(held)) {
-			inventory.setItem(SLOT_PREVIEW, createHoldToolItem());
-			inventory.setItem(SLOT_INFO, createNoToolCostItem());
-			inventory.setItem(SLOT_REPAIR, createRepairButton(false, "Hold a tool to repair."));
-			inventory.setItem(SLOT_BACK, createBackButton());
-			return inventory;
-		}
-		inventory.setItem(SLOT_PREVIEW, held.clone());
-		inventory.setItem(SLOT_INFO, createCostItem(held));
-		boolean canRepair = canRepair(held);
-		inventory.setItem(SLOT_REPAIR, createRepairButton(canRepair, canRepair ? "Repair your held tool." : getRepairDisabledReason(held)));
+		inventory.setItem(SLOT_ITEM, null);
+		inventory.setItem(SLOT_INFO, createNoToolCostItem());
+		inventory.setItem(SLOT_REPAIR, createRepairButton(false, "Place a tool to repair."));
 		inventory.setItem(SLOT_BACK, createBackButton());
 		return inventory;
 	}
 
 	@Override
-	public void onClick(Player player, int slot, ItemStack clicked, ClickType type) {
+	public void onClick(Player player, int slot, ItemStack clicked, ClickType type, InventoryClickEvent event) {
+		Inventory inventory = event.getView().getTopInventory();
 		if (slot == SLOT_BACK) {
+			event.setCancelled(true);
+			returnRepairItem(player, inventory);
 			guiManager.open(MenuId.HUB, player);
 			return;
 		}
-		if (slot != SLOT_REPAIR) {
+		if (slot == SLOT_REPAIR) {
+			event.setCancelled(true);
+			handleRepair(player, inventory);
 			return;
 		}
-		ItemStack held = player.getInventory().getItemInMainHand();
-		if (!isSupportedTool(held)) {
-			player.sendMessage(ChatColor.RED + "Hold a tool to repair.");
-			guiManager.open(MenuId.REPAIR, player);
+		if (slot < inventory.getSize() && slot != SLOT_ITEM) {
+			event.setCancelled(true);
 			return;
 		}
-		double remaining = getRemainingDurability(held);
+		if (slot == SLOT_ITEM) {
+			if (!isValidRepairAction(player, event, inventory)) {
+				event.setCancelled(true);
+				return;
+			}
+			scheduleRefresh(inventory);
+			return;
+		}
+		if (event.isShiftClick()) {
+			if (!canShiftMoveToSlot(event, inventory)) {
+				event.setCancelled(true);
+				return;
+			}
+			scheduleRefresh(inventory);
+		}
+	}
+
+	@Override
+	public boolean cancelAllClicks() {
+		return false;
+	}
+
+	@Override
+	public void onClose(Player player, Inventory inventory) {
+		returnRepairItem(player, inventory);
+	}
+
+	private void handleRepair(Player player, Inventory inventory) {
+		ItemStack item = getRepairItem(inventory);
+		if (!isValidRepairItem(item)) {
+			player.sendMessage(ChatColor.RED + "Place a tool to repair.");
+			refreshDisplay(inventory);
+			return;
+		}
+		double remaining = getRemainingDurability(item);
 		if (remaining <= 0.0) {
 			player.sendMessage(ChatColor.RED + "Cannot repair broken tools.");
-			guiManager.open(MenuId.REPAIR, player);
+			refreshDisplay(inventory);
 			return;
 		}
-		long cost = repairService.getRepairCost(held);
+		long cost = repairService.getRepairCost(item);
 		if (cost < 0) {
 			player.sendMessage(ChatColor.RED + "Unable to calculate repair cost.");
-			guiManager.open(MenuId.REPAIR, player);
+			refreshDisplay(inventory);
 			return;
 		}
 		long banked = moneyService.getBanked(player.getUniqueId());
 		if (banked < cost) {
 			player.sendMessage(ChatColor.RED + "Not enough banked money. Cost $" + formatMoney(cost) + ".");
-			guiManager.open(MenuId.REPAIR, player);
+			refreshDisplay(inventory);
 			return;
 		}
 		if (!moneyService.removeBanked(player, cost)) {
 			player.sendMessage(ChatColor.RED + "Unable to withdraw banked money.");
-			guiManager.open(MenuId.REPAIR, player);
+			refreshDisplay(inventory);
 			return;
 		}
-		ItemMeta meta = held.getItemMeta();
+		ItemMeta meta = item.getItemMeta();
 		if (meta instanceof Damageable damageable) {
 			damageable.setDamage(0);
-			held.setItemMeta(damageable);
+			item.setItemMeta(damageable);
 		}
-		toolMetaService.incrementRepairCount(held);
+		toolMetaService.incrementRepairCount(item);
 		player.sendMessage(ChatColor.GREEN + "Repaired for $" + formatMoney(cost) + ".");
-		guiManager.open(MenuId.REPAIR, player);
+		refreshDisplay(inventory);
+	}
+
+	private boolean isValidRepairAction(Player player, InventoryClickEvent event, Inventory inventory) {
+		ClickType clickType = event.getClick();
+		if (clickType == ClickType.DOUBLE_CLICK || clickType == ClickType.MIDDLE || clickType == ClickType.DROP || clickType == ClickType.CONTROL_DROP) {
+			return false;
+		}
+		ItemStack incoming = resolveIncomingItem(player, event);
+		if (incoming == null || incoming.getType() == Material.AIR) {
+			return true;
+		}
+		if (!isValidRepairItem(incoming)) {
+			player.sendMessage(ChatColor.RED + "Only repairable tools can go here.");
+			return false;
+		}
+		return true;
+	}
+
+	private boolean canShiftMoveToSlot(InventoryClickEvent event, Inventory inventory) {
+		if (event.getRawSlot() < inventory.getSize()) {
+			return true;
+		}
+		ItemStack current = event.getCurrentItem();
+		if (!isValidRepairItem(current)) {
+			return false;
+		}
+		return getRepairItem(inventory) == null;
+	}
+
+	private ItemStack resolveIncomingItem(Player player, InventoryClickEvent event) {
+		if (event.getClick() == ClickType.NUMBER_KEY) {
+			int hotbar = event.getHotbarButton();
+			if (hotbar >= 0) {
+				return player.getInventory().getItem(hotbar);
+			}
+		}
+		if (event.getClick() == ClickType.SWAP_OFFHAND) {
+			return player.getInventory().getItemInOffHand();
+		}
+		return event.getCursor();
+	}
+
+	private void scheduleRefresh(Inventory inventory) {
+		Bukkit.getScheduler().runTask(plugin, () -> refreshDisplay(inventory));
+	}
+
+	private void refreshDisplay(Inventory inventory) {
+		ItemStack item = getRepairItem(inventory);
+		if (item == null) {
+			inventory.setItem(SLOT_INFO, createNoToolCostItem());
+			inventory.setItem(SLOT_REPAIR, createRepairButton(false, "Place a tool to repair."));
+			return;
+		}
+		inventory.setItem(SLOT_INFO, createCostItem(item));
+		boolean canRepair = canRepair(item);
+		inventory.setItem(SLOT_REPAIR, createRepairButton(canRepair, canRepair ? "Repair this tool." : getRepairDisabledReason(item)));
+	}
+
+	private ItemStack getRepairItem(Inventory inventory) {
+		if (inventory == null) {
+			return null;
+		}
+		ItemStack item = inventory.getItem(SLOT_ITEM);
+		if (item == null || item.getType() == Material.AIR) {
+			return null;
+		}
+		return item;
+	}
+
+	private void returnRepairItem(Player player, Inventory inventory) {
+		ItemStack item = getRepairItem(inventory);
+		if (item == null) {
+			return;
+		}
+		inventory.setItem(SLOT_ITEM, null);
+		Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item);
+		if (!leftovers.isEmpty()) {
+			leftovers.values().forEach(leftover -> player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+		}
+		refreshDisplay(inventory);
 	}
 
 	private boolean isSupportedTool(ItemStack item) {
@@ -131,32 +244,21 @@ public class RepairMenu implements LedgerMenu {
 	}
 
 	private boolean canRepair(ItemStack item) {
-		return isSupportedTool(item) && getRemainingDurability(item) > 0.0 && repairService.getRepairCost(item) >= 0;
+		return isValidRepairItem(item) && getRemainingDurability(item) > 0.0 && repairService.getRepairCost(item) >= 0;
+	}
+
+	private boolean isValidRepairItem(ItemStack item) {
+		return isSupportedTool(item) && item.getAmount() == 1;
 	}
 
 	private String getRepairDisabledReason(ItemStack item) {
-		if (!isSupportedTool(item)) {
-			return "Hold a tool to repair.";
+		if (!isValidRepairItem(item)) {
+			return "Place a tool to repair.";
 		}
 		if (getRemainingDurability(item) <= 0.0) {
 			return "Cannot repair broken tools.";
 		}
 		return "Unable to repair this tool.";
-	}
-
-	private ItemStack createHoldToolItem() {
-		ItemStack item = new ItemStack(Material.BARRIER);
-		ItemMeta meta = item.getItemMeta();
-		if (meta == null) {
-			return item;
-		}
-		meta.setDisplayName(ChatColor.YELLOW + "Hold a tool");
-		List<String> lore = new ArrayList<>();
-		lore.add(ChatColor.GRAY + "Hold a supported tool");
-		lore.add(ChatColor.GRAY + "to view repair info.");
-		meta.setLore(lore);
-		item.setItemMeta(meta);
-		return item;
 	}
 
 	private ItemStack createNoToolCostItem() {
@@ -167,7 +269,7 @@ public class RepairMenu implements LedgerMenu {
 		}
 		meta.setDisplayName(ChatColor.YELLOW + "Repair Cost");
 		List<String> lore = new ArrayList<>();
-		lore.add(ChatColor.GRAY + "Hold a tool to view cost.");
+		lore.add(ChatColor.GRAY + "Place a tool to view cost.");
 		meta.setLore(lore);
 		item.setItemMeta(meta);
 		return item;
@@ -211,7 +313,7 @@ public class RepairMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName((enabled ? ChatColor.GREEN : ChatColor.RED) + "Repair Held Tool");
+		meta.setDisplayName((enabled ? ChatColor.GREEN : ChatColor.RED) + "Repair Tool");
 		List<String> lore = new ArrayList<>();
 		lore.add(ChatColor.GRAY + loreText);
 		lore.add(ChatColor.DARK_GRAY + "Banked money only");
