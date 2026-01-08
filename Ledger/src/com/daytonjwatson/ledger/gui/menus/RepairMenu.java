@@ -150,7 +150,7 @@ public class RepairMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(ChatColor.RED + "Hold a tool");
+		meta.setDisplayName(ChatColor.YELLOW + "Hold a tool");
 		List<String> lore = new ArrayList<>();
 		lore.add(ChatColor.GRAY + "Hold a supported tool");
 		lore.add(ChatColor.GRAY + "to view repair info.");
@@ -211,7 +211,7 @@ public class RepairMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(ChatColor.GREEN + "Repair Held Tool");
+		meta.setDisplayName((enabled ? ChatColor.GREEN : ChatColor.RED) + "Repair Held Tool");
 		List<String> lore = new ArrayList<>();
 		lore.add(ChatColor.GRAY + loreText);
 		lore.add(ChatColor.DARK_GRAY + "Banked money only");

@@ -95,7 +95,7 @@ public class LedgerPlugin extends JavaPlugin {
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
 		this.sellService = new SellService(marketService, moneyService);
 		this.guiManager = new GuiManager(spawnRegionService);
-		guiManager.register(new HubMenu(guiManager, moneyService));
+		guiManager.register(new HubMenu(guiManager));
 		guiManager.register(new SellMenu(guiManager, marketService, sellService));
 		guiManager.register(new BankMenu(guiManager, moneyService, bankService, spawnRegionService));
 		guiManager.register(new ToolsMenu(guiManager, moneyService, toolVendorService, spawnRegionService));
