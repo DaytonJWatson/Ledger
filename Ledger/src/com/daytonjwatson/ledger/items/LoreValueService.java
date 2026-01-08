@@ -78,6 +78,33 @@ public class LoreValueService implements Listener {
 		item.setItemMeta(meta);
 	}
 
+	private void clearPriceMeta(ItemStack item) {
+		if (item == null || item.getType() == Material.AIR) {
+			return;
+		}
+		ItemMeta meta = item.getItemMeta();
+		if (meta == null) {
+			return;
+		}
+		boolean changed = false;
+		List<String> lore = meta.getLore();
+		if (lore != null) {
+			List<String> updated = new ArrayList<>(lore);
+			boolean removed = updated.removeIf(line -> ChatColor.stripColor(line).startsWith("Value:"));
+			if (removed) {
+				meta.setLore(updated.isEmpty() ? null : updated);
+				changed = true;
+			}
+		}
+		if (meta.getPersistentDataContainer().has(priceKey, PersistentDataType.DOUBLE)) {
+			meta.getPersistentDataContainer().remove(priceKey);
+			changed = true;
+		}
+		if (changed) {
+			item.setItemMeta(meta);
+		}
+	}
+
 	@EventHandler
 	public void onInventoryOpen(InventoryOpenEvent event) {
 		if (event.getPlayer() instanceof Player player) {
@@ -101,9 +128,19 @@ public class LoreValueService implements Listener {
 	public void onPickup(EntityPickupItemEvent event) {
 		if (event.getEntity() instanceof Player player) {
 			ItemStack stack = event.getItem().getItemStack();
-			updateItemLore(player, stack);
+			clearPriceMeta(stack);
 			event.getItem().setItemStack(stack);
-			updatePlayerInventory(player);
+			ItemStack[] contents = player.getInventory().getContents();
+			for (ItemStack item : contents) {
+				if (item == null || item.getType() == Material.AIR) {
+					continue;
+				}
+				if (item.getItemMeta() instanceof BlockStateMeta) {
+					continue;
+				}
+				clearPriceMeta(item);
+			}
+			plugin.getServer().getScheduler().runTask(plugin, () -> updatePlayerInventory(player));
 		}
 	}
 }
