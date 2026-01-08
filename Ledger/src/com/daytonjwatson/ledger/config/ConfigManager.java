@@ -254,6 +254,7 @@ public class ConfigManager {
 		yaml.set("animalPen.max.x", 4);
 		yaml.set("animalPen.max.y", 255);
 		yaml.set("animalPen.max.z", 4);
+		yaml.set("hubBlocks", java.util.List.of("EMERALD_BLOCK"));
 		writeYaml(file, yaml);
 	}
 
