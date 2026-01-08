@@ -6,9 +6,11 @@ import com.daytonjwatson.ledger.economy.DeathPenaltyListener;
 import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
+import com.daytonjwatson.ledger.market.DepletionListener;
 import com.daytonjwatson.ledger.market.MarketService;
 import com.daytonjwatson.ledger.market.MarketState;
 import com.daytonjwatson.ledger.market.MarketStorageYaml;
+import com.daytonjwatson.ledger.market.ScarcityWindowService;
 import com.daytonjwatson.ledger.mobs.MobKillListener;
 import com.daytonjwatson.ledger.mobs.MobPayoutService;
 import com.daytonjwatson.ledger.spawn.SpawnInteractionListener;
@@ -41,6 +43,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private RepairService repairService;
 	private MobPayoutService mobPayoutService;
 	private SilkTouchMarkService silkTouchMarkService;
+	private ScarcityWindowService scarcityWindowService;
 	
 	@Override
 	public void onEnable() {
@@ -58,16 +61,18 @@ public class LedgerPlugin extends JavaPlugin {
 
 		this.upgradeService = new UpgradeService(configManager, moneyService, spawnRegionService);
 		this.silkTouchMarkService = new SilkTouchMarkService(this);
-		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService);
+		this.scarcityWindowService = new ScarcityWindowService(configManager);
+		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService, scarcityWindowService);
 		this.bankService = new BankService(spawnRegionService, moneyService);
 		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService);
 		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this), spawnRegionService, toolVendorService);
-		this.mobPayoutService = new MobPayoutService(configManager, marketState);
+		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
 
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService), this);
 		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
 		Bukkit.getPluginManager().registerEvents(new MobKillListener(mobPayoutService, moneyService), this);
+		Bukkit.getPluginManager().registerEvents(new DepletionListener(configManager, marketService), this);
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);

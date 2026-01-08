@@ -45,11 +45,11 @@ public class LoreValueService implements Listener {
 			if (item.getItemMeta() instanceof BlockStateMeta) {
 				continue;
 			}
-			updateItemLore(item);
+			updateItemLore(player, item);
 		}
 	}
 
-	public void updateItemLore(ItemStack item) {
+	public void updateItemLore(Player player, ItemStack item) {
 		if (item == null || item.getType() == Material.AIR) {
 			return;
 		}
@@ -57,7 +57,7 @@ public class LoreValueService implements Listener {
 		if (meta == null) {
 			return;
 		}
-		double price = marketService.getSellPrice(item);
+		double price = marketService.getSellPrice(player, item);
 		if (price <= 0.0) {
 			return;
 		}

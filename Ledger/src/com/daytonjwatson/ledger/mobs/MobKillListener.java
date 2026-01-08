@@ -44,7 +44,7 @@ public class MobKillListener implements Listener {
 		}
 		EntityType type = event.getEntityType();
 		String key = "entity:" + type.name();
-		double payout = mobPayoutService.getPayout(key);
+		double payout = mobPayoutService.getPayout(killer, key);
 		if (payout <= 0.0) {
 			return;
 		}

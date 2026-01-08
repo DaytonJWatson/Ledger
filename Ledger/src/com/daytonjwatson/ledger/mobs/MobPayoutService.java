@@ -3,19 +3,23 @@ package com.daytonjwatson.ledger.mobs;
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
 import com.daytonjwatson.ledger.market.MarketState;
+import com.daytonjwatson.ledger.market.ScarcityWindowService;
+import org.bukkit.entity.Player;
 
 public class MobPayoutService {
 	private final ConfigManager configManager;
 	private final MarketState marketState;
 	private final PriceTable priceTable;
+	private final ScarcityWindowService scarcityWindowService;
 
-	public MobPayoutService(ConfigManager configManager, MarketState marketState) {
+	public MobPayoutService(ConfigManager configManager, MarketState marketState, ScarcityWindowService scarcityWindowService) {
 		this.configManager = configManager;
 		this.marketState = marketState;
+		this.scarcityWindowService = scarcityWindowService;
 		this.priceTable = new PriceTable(configManager.getPrices());
 	}
 
-	public double getPayout(String mobKey) {
+	public double getPayout(Player player, String mobKey) {
 		PriceTable.PriceEntry entry = priceTable.getEntry(mobKey);
 		if (entry == null) {
 			return 0.0;
@@ -23,8 +27,9 @@ public class MobPayoutService {
 		MarketState.MobState state = marketState.getOrCreateMob(mobKey);
 		decay(state);
 		double supplyFactor = 1.0 / Math.pow(1.0 + (state.getKillAccumulator() / entry.getCap()), entry.getSigma());
-		double raw = entry.getBase() * supplyFactor;
-		double clamped = clamp(raw, entry.getBase() * entry.getMinFactor(), entry.getBase() * entry.getMaxFactor());
+		double windowMultiplier = scarcityWindowService.getWindowMultiplier(player, mobKey, ScarcityWindowService.WindowContext.MOB);
+		double raw = entry.getBase() * supplyFactor * windowMultiplier;
+		double clamped = clamp(raw, entry.getBase() * entry.getMinFactor(), entry.getBase() * entry.getMaxFactor() * windowMultiplier);
 		return Math.max(0.0, clamped);
 	}
 
