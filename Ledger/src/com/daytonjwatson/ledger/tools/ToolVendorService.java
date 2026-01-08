@@ -37,6 +37,7 @@ public class ToolVendorService {
 		typeWeights.put(ToolType.SWORD, 1.10);
 		tierMultipliers.put(ToolTier.WOOD, 0.15);
 		tierMultipliers.put(ToolTier.STONE, 0.45);
+		tierMultipliers.put(ToolTier.COPPER, 0.70);
 		tierMultipliers.put(ToolTier.IRON, 1.00);
 		tierMultipliers.put(ToolTier.DIAMOND, 3.50);
 		tierMultipliers.put(ToolTier.NETHERITE, 12.00);
@@ -82,7 +83,7 @@ public class ToolVendorService {
 	}
 
 	public boolean isTierUnlocked(Player player, ToolTier tier) {
-		if (tier == ToolTier.WOOD || tier == ToolTier.STONE) {
+		if (tier == ToolTier.WOOD || tier == ToolTier.STONE || tier == ToolTier.COPPER) {
 			return true;
 		}
 		int tierLevel = getTierLevel(tier);
@@ -111,6 +112,7 @@ public class ToolVendorService {
 		return switch (tier) {
 			case WOOD -> 2;
 			case STONE -> 2;
+			case COPPER -> 2;
 			case IRON -> 3;
 			case DIAMOND -> 4;
 			case NETHERITE -> 5;
@@ -137,6 +139,7 @@ public class ToolVendorService {
 				case PICKAXE -> switch (tier) {
 					case WOOD -> Material.WOODEN_PICKAXE;
 					case STONE -> Material.STONE_PICKAXE;
+					case COPPER -> Material.COPPER_PICKAXE;
 					case IRON -> Material.IRON_PICKAXE;
 					case DIAMOND -> Material.DIAMOND_PICKAXE;
 					case NETHERITE -> Material.NETHERITE_PICKAXE;
@@ -144,6 +147,7 @@ public class ToolVendorService {
 				case AXE -> switch (tier) {
 					case WOOD -> Material.WOODEN_AXE;
 					case STONE -> Material.STONE_AXE;
+					case COPPER -> Material.COPPER_AXE;
 					case IRON -> Material.IRON_AXE;
 					case DIAMOND -> Material.DIAMOND_AXE;
 					case NETHERITE -> Material.NETHERITE_AXE;
@@ -151,6 +155,7 @@ public class ToolVendorService {
 				case SHOVEL -> switch (tier) {
 					case WOOD -> Material.WOODEN_SHOVEL;
 					case STONE -> Material.STONE_SHOVEL;
+					case COPPER -> Material.COPPER_SHOVEL;
 					case IRON -> Material.IRON_SHOVEL;
 					case DIAMOND -> Material.DIAMOND_SHOVEL;
 					case NETHERITE -> Material.NETHERITE_SHOVEL;
@@ -158,6 +163,7 @@ public class ToolVendorService {
 				case SWORD -> switch (tier) {
 					case WOOD -> Material.WOODEN_SWORD;
 					case STONE -> Material.STONE_SWORD;
+					case COPPER -> Material.COPPER_SWORD;
 					case IRON -> Material.IRON_SWORD;
 					case DIAMOND -> Material.DIAMOND_SWORD;
 					case NETHERITE -> Material.NETHERITE_SWORD;
@@ -169,6 +175,7 @@ public class ToolVendorService {
 	public enum ToolTier {
 		WOOD,
 		STONE,
+		COPPER,
 		IRON,
 		DIAMOND,
 		NETHERITE

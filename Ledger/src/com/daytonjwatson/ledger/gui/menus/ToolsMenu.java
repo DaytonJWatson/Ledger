@@ -228,7 +228,7 @@ public class ToolsMenu implements LedgerMenu {
 		List<String> lore = new ArrayList<>();
 		lore.add(ChatColor.GRAY + "Banked: " + ChatColor.GOLD + "$" + formatMoney(moneyService.getBanked(player.getUniqueId())));
 		for (ToolTier tier : ToolTier.values()) {
-			if (tier == ToolTier.WOOD || tier == ToolTier.STONE) {
+			if (tier == ToolTier.WOOD || tier == ToolTier.STONE || tier == ToolTier.COPPER) {
 				lore.add(ChatColor.GRAY + formatTier(tier) + ": " + ChatColor.GREEN + "Unlocked");
 				continue;
 			}
@@ -268,6 +268,7 @@ public class ToolsMenu implements LedgerMenu {
 		return switch (tier) {
 			case WOOD -> "Wood";
 			case STONE -> "Stone";
+			case COPPER -> "Copper";
 			case IRON -> "Iron";
 			case DIAMOND -> "Diamond";
 			case NETHERITE -> "Netherite";
@@ -303,6 +304,7 @@ public class ToolsMenu implements LedgerMenu {
 		return switch (tier) {
 			case WOOD -> 2;
 			case STONE -> 2;
+			case COPPER -> 2;
 			case IRON -> 3;
 			case DIAMOND -> 4;
 			case NETHERITE -> 5;
