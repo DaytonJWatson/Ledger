@@ -23,3 +23,6 @@ commands:
   upgrade:
     description: Purchase upgrades.
     usage: /upgrade buy <id>
+  ledger:
+    description: Open the Ledger hub menu.
+    usage: /ledger

@@ -6,8 +6,12 @@ import com.daytonjwatson.ledger.economy.DeathPenaltyListener;
 import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.farming.CropHarvestListener;
 import com.daytonjwatson.ledger.farming.SoilFatigueService;
+import com.daytonjwatson.ledger.gui.HubCommand;
 import com.daytonjwatson.ledger.gui.GuiListener;
 import com.daytonjwatson.ledger.gui.GuiManager;
+import com.daytonjwatson.ledger.gui.MenuId;
+import com.daytonjwatson.ledger.gui.menus.HubMenu;
+import com.daytonjwatson.ledger.gui.menus.PlaceholderMenu;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
 import com.daytonjwatson.ledger.market.DepletionListener;
@@ -81,8 +85,14 @@ public class LedgerPlugin extends JavaPlugin {
 		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
 		this.guiManager = new GuiManager(spawnRegionService);
+		guiManager.register(new HubMenu(guiManager, moneyService));
+		guiManager.register(new PlaceholderMenu(MenuId.SELL, "Sell"));
+		guiManager.register(new PlaceholderMenu(MenuId.BANK, "Bank"));
+		guiManager.register(new PlaceholderMenu(MenuId.TOOLS, "Tools"));
+		guiManager.register(new PlaceholderMenu(MenuId.UPGRADES, "Upgrades"));
+		guiManager.register(new PlaceholderMenu(MenuId.REPAIR, "Repair"));
 
-		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService), this);
+		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService, guiManager, configManager), this);
 		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
 		Bukkit.getPluginManager().registerEvents(new MobKillListener(configManager, mobPayoutService, moneyService), this);
 		Bukkit.getPluginManager().registerEvents(new DepletionListener(configManager, marketService), this);
@@ -97,6 +107,7 @@ public class LedgerPlugin extends JavaPlugin {
 		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));
 		getCommand("balance").setExecutor(new com.daytonjwatson.ledger.economy.BalanceCommand(moneyService));
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
+		getCommand("ledger").setExecutor(new HubCommand(guiManager));
 		UpgradeCommand upgradeCommand = new UpgradeCommand(upgradeService);
 		getCommand("upgrade").setExecutor(upgradeCommand);
 		getCommand("upgrades").setExecutor(upgradeCommand);
