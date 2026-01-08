@@ -52,8 +52,8 @@ public class LedgerPlugin extends JavaPlugin {
 
 		this.marketService = new MarketService(configManager, marketState);
 		this.bankService = new BankService(spawnRegionService, moneyService);
-		this.toolVendorService = new ToolVendorService(configManager, moneyService);
-		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this));
+		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService);
+		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this), spawnRegionService, toolVendorService);
 		this.mobPayoutService = new MobPayoutService(configManager, marketState);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
 
@@ -64,7 +64,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
 
 		getCommand("sell").setExecutor(new com.daytonjwatson.ledger.spawn.SellCommand(spawnRegionService, marketService, moneyService));
-		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService));
+		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));
 		getCommand("balance").setExecutor(new com.daytonjwatson.ledger.economy.BalanceCommand(moneyService));
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
 

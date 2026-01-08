@@ -3,11 +3,14 @@ package com.daytonjwatson.ledger.market;
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.util.AtomicFileWriter;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 
 public class MarketStorageYaml {
@@ -82,17 +85,35 @@ public class MarketStorageYaml {
 	}
 
 	private YamlConfiguration loadWithBackup() {
-		if (!marketFile.exists()) {
-			return new YamlConfiguration();
+		File tmp = new File(marketFile.getParentFile(), marketFile.getName() + ".tmp");
+		if (tmp.exists() && !tmp.delete()) {
+			plugin.getLogger().warning("Unable to delete stale market temp file: " + tmp.getName());
 		}
-		YamlConfiguration yaml = YamlConfiguration.loadConfiguration(marketFile);
-		if (yaml.getKeys(false).isEmpty()) {
-			File backup = new File(marketFile.getParentFile(), marketFile.getName() + ".bak");
-			if (backup.exists()) {
-				return YamlConfiguration.loadConfiguration(backup);
-			}
+		YamlConfiguration primary = loadConfig(marketFile);
+		if (primary != null && !primary.getKeys(false).isEmpty()) {
+			return primary;
 		}
-		return yaml;
+		File backup = new File(marketFile.getParentFile(), marketFile.getName() + ".bak");
+		YamlConfiguration backupConfig = loadConfig(backup);
+		if (backupConfig != null) {
+			return backupConfig;
+		}
+		return primary != null ? primary : new YamlConfiguration();
+	}
+
+	private YamlConfiguration loadConfig(File file) {
+		if (!file.exists()) {
+			return null;
+		}
+		try {
+			String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+			YamlConfiguration yaml = new YamlConfiguration();
+			yaml.loadFromString(content);
+			return yaml;
+		} catch (IOException | InvalidConfigurationException e) {
+			plugin.getLogger().warning("Failed to load " + file.getName() + ": " + e.getMessage());
+			return null;
+		}
 	}
 
 	private void applyDowntimeDecay() {

@@ -32,6 +32,10 @@ public final class AtomicFileWriter {
 		if (target.exists()) {
 			Files.copy(target.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
-		Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		try {
+			Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		} catch (IOException ex) {
+			Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
 	}
 }

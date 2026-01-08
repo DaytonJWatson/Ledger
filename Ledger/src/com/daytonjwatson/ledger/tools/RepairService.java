@@ -2,6 +2,7 @@ package com.daytonjwatson.ledger.tools;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.economy.MoneyService;
+import com.daytonjwatson.ledger.spawn.SpawnRegionService;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -9,6 +10,7 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 
 public class RepairService {
+	private final SpawnRegionService spawnRegionService;
 	private final MoneyService moneyService;
 	private final ToolMetaService toolMetaService;
 	private final double repairBase;
@@ -17,14 +19,15 @@ public class RepairService {
 	private final double globalBase;
 	private final ToolVendorService toolVendorService;
 
-	public RepairService(ConfigManager configManager, MoneyService moneyService, ToolMetaService toolMetaService) {
+	public RepairService(ConfigManager configManager, MoneyService moneyService, ToolMetaService toolMetaService, SpawnRegionService spawnRegionService, ToolVendorService toolVendorService) {
+		this.spawnRegionService = spawnRegionService;
 		this.moneyService = moneyService;
 		this.toolMetaService = toolMetaService;
 		this.repairBase = configManager.getConfig().getDouble("tools.repairBase", 0.10);
 		this.repairCountFactor = configManager.getConfig().getDouble("tools.repairCountFactor", 0.04);
 		this.repairCap = configManager.getConfig().getDouble("tools.repairCap", 0.60);
 		this.globalBase = configManager.getConfig().getDouble("tools.globalBase", 8000.0);
-		this.toolVendorService = new ToolVendorService(configManager, moneyService);
+		this.toolVendorService = toolVendorService;
 	}
 
 	public long getRepairCost(ItemStack item) {
@@ -45,6 +48,9 @@ public class RepairService {
 	}
 
 	public boolean repair(Player player, ItemStack item) {
+		if (!spawnRegionService.isInSpawn(player.getLocation())) {
+			return false;
+		}
 		if (item == null || item.getType() == Material.AIR) {
 			return false;
 		}
