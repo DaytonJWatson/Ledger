@@ -12,6 +12,7 @@ import com.daytonjwatson.ledger.gui.GuiManager;
 import com.daytonjwatson.ledger.gui.MenuId;
 import com.daytonjwatson.ledger.gui.menus.HubMenu;
 import com.daytonjwatson.ledger.gui.menus.PlaceholderMenu;
+import com.daytonjwatson.ledger.gui.menus.SellMenu;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
 import com.daytonjwatson.ledger.market.DepletionListener;
@@ -23,6 +24,7 @@ import com.daytonjwatson.ledger.mobs.MobKillListener;
 import com.daytonjwatson.ledger.mobs.MobPayoutService;
 import com.daytonjwatson.ledger.spawn.AnimalSellListener;
 import com.daytonjwatson.ledger.spawn.AnimalSellService;
+import com.daytonjwatson.ledger.spawn.SellService;
 import com.daytonjwatson.ledger.spawn.SpawnInteractionListener;
 import com.daytonjwatson.ledger.spawn.SpawnRegionService;
 import com.daytonjwatson.ledger.tools.RepairService;
@@ -56,6 +58,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private ScarcityWindowService scarcityWindowService;
 	private SoilFatigueService soilFatigueService;
 	private AnimalSellService animalSellService;
+	private SellService sellService;
 	private GuiManager guiManager;
 	
 	@Override
@@ -84,9 +87,10 @@ public class LedgerPlugin extends JavaPlugin {
 		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
 		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
+		this.sellService = new SellService(marketService, moneyService);
 		this.guiManager = new GuiManager(spawnRegionService);
 		guiManager.register(new HubMenu(guiManager, moneyService));
-		guiManager.register(new PlaceholderMenu(MenuId.SELL, "Sell"));
+		guiManager.register(new SellMenu(guiManager, marketService, sellService));
 		guiManager.register(new PlaceholderMenu(MenuId.BANK, "Bank"));
 		guiManager.register(new PlaceholderMenu(MenuId.TOOLS, "Tools"));
 		guiManager.register(new PlaceholderMenu(MenuId.UPGRADES, "Upgrades"));
@@ -103,7 +107,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
 		Bukkit.getPluginManager().registerEvents(new GuiListener(guiManager), this);
 
-		getCommand("sell").setExecutor(new com.daytonjwatson.ledger.spawn.SellCommand(spawnRegionService, marketService, moneyService));
+		getCommand("sell").setExecutor(new com.daytonjwatson.ledger.spawn.SellCommand(spawnRegionService, sellService));
 		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));
 		getCommand("balance").setExecutor(new com.daytonjwatson.ledger.economy.BalanceCommand(moneyService));
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
