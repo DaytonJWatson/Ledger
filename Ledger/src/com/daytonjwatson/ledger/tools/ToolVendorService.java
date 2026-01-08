@@ -52,6 +52,9 @@ public class ToolVendorService {
 		if (!spawnRegionService.isInSpawn(player.getLocation())) {
 			return false;
 		}
+		if (!isTierUnlocked(player, tier)) {
+			return false;
+		}
 		long price = getBuyPrice(type, tier, variant);
 		if (!moneyService.removeBanked(player, price)) {
 			return false;
@@ -59,6 +62,19 @@ public class ToolVendorService {
 		ItemStack item = new ItemStack(type.getMaterialForTier(tier));
 		player.getInventory().addItem(item);
 		return true;
+	}
+
+	public boolean isTierUnlocked(Player player, ToolTier tier) {
+		if (tier == ToolTier.WOOD || tier == ToolTier.STONE) {
+			return true;
+		}
+		int unlocked = moneyService.getVendorTierUnlocked(player.getUniqueId());
+		return switch (tier) {
+			case IRON -> unlocked >= 1;
+			case DIAMOND -> unlocked >= 2;
+			case NETHERITE -> unlocked >= 3;
+			default -> true;
+		};
 	}
 
 	public enum ToolType {

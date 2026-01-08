@@ -50,6 +50,10 @@ public class ToolVendorCommand implements CommandExecutor {
 				player.sendMessage(ChatColor.RED + "Invalid tool selection.");
 				return true;
 			}
+			if (!toolVendorService.isTierUnlocked(player, tier)) {
+				player.sendMessage(ChatColor.RED + "That vendor tier is locked. Purchase the upgrade first.");
+				return true;
+			}
 			if (!toolVendorService.purchaseTool(player, type, tier, variant)) {
 				player.sendMessage(ChatColor.RED + "Not enough banked money.");
 				return true;

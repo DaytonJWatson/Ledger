@@ -17,3 +17,9 @@ commands:
   tool:
     description: Tool vendor actions.
     usage: /tool buy <type> <tier> [variant] | /tool repair
+  upgrades:
+    description: View upgrade progress.
+    usage: /upgrades
+  upgrade:
+    description: Purchase upgrades.
+    usage: /upgrade buy <id>

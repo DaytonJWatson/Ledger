@@ -108,7 +108,40 @@ public class ConfigManager {
 
 	private void writeDefaultUpgrades(File file) throws IOException {
 		YamlConfiguration yaml = new YamlConfiguration();
-		yaml.set("upgrades", null);
+		ConfigurationSection upgradesSection = yaml.createSection("upgrades");
+		createCurveUpgrade(upgradesSection, "barter", "Bartering", 20, 250, 1.55,
+			"Improve sell prices with a bartering bonus.");
+		createCurveUpgrade(upgradesSection, "insurance", "Insurance", 10, 1200, 1.60,
+			"Reduce the percentage of money lost on death.");
+		createCurveUpgrade(upgradesSection, "logistics", "Logistics", 5, 900, 1.55,
+			"Earn bonuses for selling diverse batches of items.");
+
+		createChoiceUpgrade(upgradesSection, "spec_choice_miner", "Specialization: Miner", 2000,
+			"MINER", "Choose the Miner specialization.");
+		createChoiceUpgrade(upgradesSection, "spec_choice_farmer", "Specialization: Farmer", 2000,
+			"FARMER", "Choose the Farmer specialization.");
+		createChoiceUpgrade(upgradesSection, "spec_choice_hunter", "Specialization: Hunter", 2000,
+			"HUNTER", "Choose the Hunter specialization.");
+
+		createSpecializationUpgrade(upgradesSection, "spec_miner", "Miner Mastery", 10, 500, 1.45, "MINER",
+			"Boost ore sales when specialized as a Miner.");
+		createSpecializationUpgrade(upgradesSection, "spec_farmer", "Farmer Mastery", 10, 500, 1.45, "FARMER",
+			"Boost crop sales when specialized as a Farmer.");
+		createSpecializationUpgrade(upgradesSection, "spec_hunter", "Hunter Mastery", 10, 500, 1.45, "HUNTER",
+			"Boost mob drop sales when specialized as a Hunter.");
+
+		createVendorUnlock(upgradesSection, "vendor_iron", "Vendor Tier: Iron", 5000, 1,
+			"Unlock iron tool purchases.");
+		createVendorUnlock(upgradesSection, "vendor_diamond", "Vendor Tier: Diamond", 15000, 2,
+			"Unlock diamond tool purchases.", "vendor_iron");
+		createVendorUnlock(upgradesSection, "vendor_netherite", "Vendor Tier: Netherite", 35000, 3,
+			"Unlock netherite tool purchases.", "vendor_diamond");
+
+		createRefinementUnlock(upgradesSection, "refine_autosmelt_1", "Refinement: Autosmelt I", 4000, 1);
+		createRefinementUnlock(upgradesSection, "refine_autosmelt_2", "Refinement: Autosmelt II", 6500, 2, "refine_autosmelt_1");
+		createRefinementUnlock(upgradesSection, "refine_autosmelt_3", "Refinement: Autosmelt III", 9500, 3, "refine_autosmelt_2");
+		createRefinementUnlock(upgradesSection, "refine_autosmelt_4", "Refinement: Autosmelt IV", 13000, 4, "refine_autosmelt_3");
+		createRefinementUnlock(upgradesSection, "refine_autosmelt_5", "Refinement: Autosmelt V", 17500, 5, "refine_autosmelt_4");
 		writeYaml(file, yaml);
 	}
 
@@ -126,6 +159,63 @@ public class ConfigManager {
 
 	private void writeYaml(File file, YamlConfiguration yaml) throws IOException {
 		AtomicFileWriter.writeAtomically(file, yaml.saveToString().getBytes());
+	}
+
+	private void createCurveUpgrade(ConfigurationSection root, String id, String name, int maxLevel, double c0, double g, String description) {
+		ConfigurationSection section = root.createSection(id);
+		section.set("name", name);
+		section.set("type", "LEVEL");
+		section.set("maxLevel", maxLevel);
+		ConfigurationSection cost = section.createSection("cost");
+		cost.set("c0", c0);
+		cost.set("g", g);
+		section.set("description", description);
+	}
+
+	private void createChoiceUpgrade(ConfigurationSection root, String id, String name, long cost, String specializationChoice, String description) {
+		ConfigurationSection section = root.createSection(id);
+		section.set("name", name);
+		section.set("type", "CHOICE");
+		section.set("cost", cost);
+		section.set("specializationChoice", specializationChoice);
+		section.set("description", description);
+	}
+
+	private void createSpecializationUpgrade(ConfigurationSection root, String id, String name, int maxLevel, double c0, double g,
+											 String specializationRequirement, String description) {
+		ConfigurationSection section = root.createSection(id);
+		section.set("name", name);
+		section.set("type", "LEVEL");
+		section.set("maxLevel", maxLevel);
+		ConfigurationSection cost = section.createSection("cost");
+		cost.set("c0", c0);
+		cost.set("g", g);
+		section.set("specializationRequirement", specializationRequirement);
+		section.set("description", description);
+	}
+
+	private void createVendorUnlock(ConfigurationSection root, String id, String name, long cost, int tier, String description, String... requires) {
+		ConfigurationSection section = root.createSection(id);
+		section.set("name", name);
+		section.set("type", "UNLOCK");
+		section.set("cost", cost);
+		section.set("unlocksVendorTier", tier);
+		section.set("description", description);
+		if (requires.length > 0) {
+			section.set("requires", requires);
+		}
+	}
+
+	private void createRefinementUnlock(ConfigurationSection root, String id, String name, long cost, int level, String... requires) {
+		ConfigurationSection section = root.createSection(id);
+		section.set("name", name);
+		section.set("type", "UNLOCK");
+		section.set("cost", cost);
+		section.set("refinementLevel", level);
+		section.set("description", "Unlock autosmelt level " + level + " (not implemented yet).");
+		if (requires.length > 0) {
+			section.set("requires", requires);
+		}
 	}
 
 	private interface DefaultWriter {
