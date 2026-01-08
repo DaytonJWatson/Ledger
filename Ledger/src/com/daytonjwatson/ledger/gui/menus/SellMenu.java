@@ -94,7 +94,7 @@ public class SellMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(ChatColor.GOLD + "Sell Summary");
+		meta.setDisplayName(ChatColor.YELLOW + "Sell Summary");
 		List<String> lore = new ArrayList<>();
 		InventorySummary summary = summarizeInventory(player);
 		ItemStack hand = player.getInventory().getItemInMainHand();

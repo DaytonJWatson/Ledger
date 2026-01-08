@@ -60,11 +60,11 @@ public class UpgradesMenu implements LedgerMenu {
 			int slot = ENTRY_START + index;
 			inventory.setItem(slot, createUpgradeItem(player, definitions.get(definitionIndex)));
 		}
-		inventory.setItem(45, createButton(Material.BARRIER, ChatColor.RED + "Back"));
-		inventory.setItem(47, createButton(Material.ARROW, ChatColor.YELLOW + "Previous Page"));
+		inventory.setItem(45, createButton(Material.BARRIER, ChatColor.RED, "Back"));
+		inventory.setItem(47, createButton(Material.ARROW, ChatColor.YELLOW, "Previous Page"));
 		inventory.setItem(49, createPlayerInfoItem(player));
-		inventory.setItem(51, createButton(Material.ARROW, ChatColor.YELLOW + "Next Page"));
-		inventory.setItem(53, createButton(Material.SUNFLOWER, ChatColor.GREEN + "Refresh"));
+		inventory.setItem(51, createButton(Material.ARROW, ChatColor.YELLOW, "Next Page"));
+		inventory.setItem(53, createButton(Material.SUNFLOWER, ChatColor.YELLOW, "Refresh"));
 		return inventory;
 	}
 
@@ -233,7 +233,6 @@ public class UpgradesMenu implements LedgerMenu {
 		List<String> lore = new ArrayList<>();
 		UUID uuid = player.getUniqueId();
 		lore.add(ChatColor.GRAY + "Banked: " + ChatColor.GOLD + "$" + formatMoney(moneyService.getBanked(uuid)));
-		lore.add(ChatColor.GRAY + "Carried: " + ChatColor.GOLD + "$" + formatMoney(moneyService.getCarried(uuid)));
 		String specialization = upgradeService.getSpecializationChoice(uuid);
 		lore.add(ChatColor.GRAY + "Specialization: " + (specialization == null ? "None" : specialization));
 		lore.add(ChatColor.GRAY + "Vendor tiers:");
@@ -250,13 +249,13 @@ public class UpgradesMenu implements LedgerMenu {
 		return ChatColor.GRAY + "Tier " + tier + ": " + (unlocked ? ChatColor.GREEN + "Unlocked" : ChatColor.RED + "Locked");
 	}
 
-	private ItemStack createButton(Material material, String name) {
+	private ItemStack createButton(Material material, ChatColor color, String name) {
 		ItemStack item = new ItemStack(material);
 		ItemMeta meta = item.getItemMeta();
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(name);
+		meta.setDisplayName(color + name);
 		item.setItemMeta(meta);
 		return item;
 	}

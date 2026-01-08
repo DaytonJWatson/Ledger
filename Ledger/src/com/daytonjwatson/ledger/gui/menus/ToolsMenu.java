@@ -183,7 +183,7 @@ public class ToolsMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(ChatColor.AQUA + formatType(type));
+		meta.setDisplayName(ChatColor.YELLOW + formatType(type));
 		List<String> lore = new ArrayList<>();
 		if (selected) {
 			lore.add(ChatColor.GREEN + "Selected");
@@ -203,11 +203,12 @@ public class ToolsMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(ChatColor.AQUA + formatTier(spec.getTier()) + " " + formatType(spec.getType()) + formatVariantSuffix(spec));
+		boolean unlocked = toolVendorService.isTierUnlocked(player, spec.getTier());
+		ChatColor nameColor = unlocked ? ChatColor.GREEN : ChatColor.RED;
+		meta.setDisplayName(nameColor + formatTier(spec.getTier()) + " " + formatType(spec.getType()) + formatVariantSuffix(spec));
 		List<String> lore = new ArrayList<>();
 		long price = toolVendorService.getBuyPrice(spec);
 		lore.add(ChatColor.GRAY + "Price: " + ChatColor.GOLD + "$" + formatMoney(price));
-		boolean unlocked = toolVendorService.isTierUnlocked(player, spec.getTier());
 		lore.add(ChatColor.GRAY + "Tier requirement: " + (unlocked ? ChatColor.GREEN + "Unlocked" : ChatColor.RED + "Locked"));
 		lore.add(ChatColor.GRAY + "Variant: " + ChatColor.YELLOW + getVariantText(spec));
 		lore.add(ChatColor.DARK_GRAY + "Purchased with BANKED money");
@@ -223,7 +224,7 @@ public class ToolsMenu implements LedgerMenu {
 		if (meta == null) {
 			return item;
 		}
-		meta.setDisplayName(ChatColor.GOLD + "Your Unlocks / Requirements");
+		meta.setDisplayName(ChatColor.YELLOW + "Your Unlocks / Requirements");
 		List<String> lore = new ArrayList<>();
 		lore.add(ChatColor.GRAY + "Banked: " + ChatColor.GOLD + "$" + formatMoney(moneyService.getBanked(player.getUniqueId())));
 		for (ToolTier tier : ToolTier.values()) {
