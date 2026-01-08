@@ -17,14 +17,16 @@ public class ToolVendorService {
 	private final MoneyService moneyService;
 	private final SpawnRegionService spawnRegionService;
 	private final UpgradeService upgradeService;
+	private final ToolMetaService toolMetaService;
 	private final Map<ToolType, Double> typeWeights = new EnumMap<>(ToolType.class);
 	private final Map<ToolTier, Double> tierMultipliers = new EnumMap<>(ToolTier.class);
 
-	public ToolVendorService(ConfigManager configManager, MoneyService moneyService, SpawnRegionService spawnRegionService, UpgradeService upgradeService) {
+	public ToolVendorService(ConfigManager configManager, MoneyService moneyService, SpawnRegionService spawnRegionService, UpgradeService upgradeService, ToolMetaService toolMetaService) {
 		this.globalBase = configManager.getConfig().getDouble("tools.globalBase", 8000.0);
 		this.moneyService = moneyService;
 		this.spawnRegionService = spawnRegionService;
 		this.upgradeService = upgradeService;
+		this.toolMetaService = toolMetaService;
 		loadDefaults();
 	}
 
@@ -52,19 +54,29 @@ public class ToolVendorService {
 		return Math.round(price);
 	}
 
+	public long getBuyPrice(ToolSpec spec) {
+		if (spec == null) {
+			return 0L;
+		}
+		return getBuyPrice(spec.getType(), spec.getTier(), spec.getVariant());
+	}
+
 	public boolean purchaseTool(Player player, ToolType type, ToolTier tier, ToolVariant variant) {
+		return purchaseTool(player, new ToolSpec(type, tier, variant));
+	}
+
+	public boolean purchaseTool(Player player, ToolSpec spec) {
 		if (!spawnRegionService.isInSpawn(player.getLocation())) {
 			return false;
 		}
-		if (!isTierUnlocked(player, tier)) {
+		if (spec == null || !isTierUnlocked(player, spec.getTier())) {
 			return false;
 		}
-		long price = getBuyPrice(type, tier, variant);
+		long price = getBuyPrice(spec);
 		if (!moneyService.removeBanked(player, price)) {
 			return false;
 		}
-		ItemStack item = new ItemStack(type.getMaterialForTier(tier));
-		applyVariant(item, tier, variant);
+		ItemStack item = buildTool(spec);
 		player.getInventory().addItem(item);
 		return true;
 	}
@@ -83,6 +95,16 @@ public class ToolVendorService {
 		} else if (variant == ToolVariant.SILK_TOUCH) {
 			item.addEnchantment(Enchantment.SILK_TOUCH, 1);
 		}
+	}
+
+	public ItemStack buildTool(ToolSpec spec) {
+		if (spec == null) {
+			return null;
+		}
+		ItemStack item = new ItemStack(spec.getType().getMaterialForTier(spec.getTier()));
+		applyVariant(item, spec.getTier(), spec.getVariant());
+		toolMetaService.setRepairCount(item, 0);
+		return item;
 	}
 
 	private int getEfficiencyLevel(ToolTier tier) {
