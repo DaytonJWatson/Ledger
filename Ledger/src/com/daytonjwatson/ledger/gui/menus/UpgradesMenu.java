@@ -5,9 +5,10 @@ import com.daytonjwatson.ledger.gui.GuiManager;
 import com.daytonjwatson.ledger.gui.LedgerHolder;
 import com.daytonjwatson.ledger.gui.LedgerMenu;
 import com.daytonjwatson.ledger.gui.MenuId;
-import com.daytonjwatson.ledger.upgrades.PurchaseResult;
 import com.daytonjwatson.ledger.upgrades.UpgradeDefinition;
 import com.daytonjwatson.ledger.upgrades.UpgradeService;
+import com.daytonjwatson.ledger.upgrades.UpgradeService.PurchaseResult;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
