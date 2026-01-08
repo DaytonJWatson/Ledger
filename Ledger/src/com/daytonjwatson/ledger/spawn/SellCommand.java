@@ -1,27 +1,20 @@
 package com.daytonjwatson.ledger.spawn;
 
-import com.daytonjwatson.ledger.economy.MoneyService;
-import com.daytonjwatson.ledger.market.MarketService;
+import com.daytonjwatson.ledger.spawn.SellService.SellOutcome;
+import com.daytonjwatson.ledger.spawn.SellService.SellStatus;
 import org.bukkit.ChatColor;
-import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class SellCommand implements CommandExecutor {
 	private final SpawnRegionService spawnRegionService;
-	private final MarketService marketService;
-	private final MoneyService moneyService;
+	private final SellService sellService;
 
-	public SellCommand(SpawnRegionService spawnRegionService, MarketService marketService, MoneyService moneyService) {
+	public SellCommand(SpawnRegionService spawnRegionService, SellService sellService) {
 		this.spawnRegionService = spawnRegionService;
-		this.marketService = marketService;
-		this.moneyService = moneyService;
+		this.sellService = sellService;
 	}
 
 	@Override
@@ -45,60 +38,26 @@ public class SellCommand implements CommandExecutor {
 	}
 
 	private boolean sellInventory(Player player) {
-		ItemStack[] items = player.getInventory().getContents();
-		Map<Material, Integer> sellableCounts = new HashMap<>();
-		for (ItemStack item : items) {
-			if (item == null || item.getType() == Material.AIR) {
-				continue;
-			}
-			if (marketService.getSellPrice(item) <= 0.0) {
-				continue;
-			}
-			sellableCounts.merge(item.getType(), item.getAmount(), Integer::sum);
-		}
-		int distinctTypes = sellableCounts.size();
-		long total = 0;
-		int soldCount = 0;
-		for (int i = 0; i < items.length; i++) {
-			ItemStack item = items[i];
-			if (item == null || item.getType() == Material.AIR) {
-				continue;
-			}
-			double value = marketService.getSellPrice(player, item, distinctTypes);
-			if (value <= 0.0) {
-				continue;
-			}
-			total += Math.round(value * item.getAmount());
-			soldCount += item.getAmount();
-			marketService.applySale(item.getType().name(), item.getAmount());
-			items[i] = null;
-		}
-		player.getInventory().setContents(items);
-		if (total <= 0) {
+		SellOutcome outcome = sellService.sellInventory(player);
+		if (outcome.getStatus() == SellStatus.NO_SELLABLE) {
 			player.sendMessage(ChatColor.RED + "No sellable items.");
 			return true;
 		}
-		moneyService.addCarried(player, total);
-		player.sendMessage(ChatColor.GREEN + "Sold " + soldCount + " items for $" + total + ".");
+		player.sendMessage(ChatColor.GREEN + "Sold " + outcome.getSoldCount() + " items for $" + outcome.getTotal() + ".");
 		return true;
 	}
 
 	private boolean sellHand(Player player) {
-		ItemStack item = player.getInventory().getItemInMainHand();
-		if (item == null || item.getType() == Material.AIR) {
+		SellOutcome outcome = sellService.sellHand(player);
+		if (outcome.getStatus() == SellStatus.NO_ITEM) {
 			player.sendMessage(ChatColor.RED + "Hold an item to sell.");
 			return true;
 		}
-		double value = marketService.getSellPrice(player, item);
-		if (value <= 0.0) {
-			player.sendMessage(ChatColor.RED + "That item cannot be sold.");
+		if (outcome.getStatus() == SellStatus.NO_SELLABLE) {
+			player.sendMessage(ChatColor.RED + "No sellable items.");
 			return true;
 		}
-		long total = Math.round(value * item.getAmount());
-		marketService.applySale(item.getType().name(), item.getAmount());
-		player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-		moneyService.addCarried(player, total);
-		player.sendMessage(ChatColor.GREEN + "Sold for $" + total + ".");
+		player.sendMessage(ChatColor.GREEN + "Sold for $" + outcome.getTotal() + ".");
 		return true;
 	}
 }
