@@ -2,6 +2,7 @@ package com.daytonjwatson.ledger.market;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
+import com.daytonjwatson.ledger.farming.SoilFatigueService;
 import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.upgrades.UpgradeService;
 import org.bukkit.Bukkit;
@@ -24,17 +25,20 @@ public class MarketService {
 	private final UpgradeService upgradeService;
 	private final SilkTouchMarkService silkTouchMarkService;
 	private final ScarcityWindowService scarcityWindowService;
+	private final SoilFatigueService soilFatigueService;
 	private final Map<String, Double> priceCache = new HashMap<>();
 	private long marketVersion = 0;
 	private long priceCacheVersion = -1;
 
 	public MarketService(ConfigManager configManager, MarketState marketState, UpgradeService upgradeService,
-						 SilkTouchMarkService silkTouchMarkService, ScarcityWindowService scarcityWindowService) {
+						 SilkTouchMarkService silkTouchMarkService, ScarcityWindowService scarcityWindowService,
+						 SoilFatigueService soilFatigueService) {
 		this.configManager = configManager;
 		this.marketState = marketState;
 		this.upgradeService = upgradeService;
 		this.silkTouchMarkService = silkTouchMarkService;
 		this.scarcityWindowService = scarcityWindowService;
+		this.soilFatigueService = soilFatigueService;
 		this.priceTable = new PriceTable(configManager.getPrices());
 	}
 
@@ -46,7 +50,8 @@ public class MarketService {
 		if (base <= 0.0) {
 			return 0.0;
 		}
-		return base * silkTouchMarkService.getSellMultiplier(item);
+		double price = base * silkTouchMarkService.getSellMultiplier(item);
+		return applyFatigueMultiplier(item, price);
 	}
 
 	public double getSellPrice(String key) {
@@ -99,7 +104,8 @@ public class MarketService {
 		price *= upgradeService.getBarterMultiplier(barterLevel);
 		price *= upgradeService.getLogisticsMultiplier(logisticsLevel, distinctTypes);
 		price *= upgradeService.getSpecializationMultiplier(specializationLevel, matchesSpecialization(specialization, item));
-		return clamp(price, base * windowMultiplier * 0.2, base * windowMultiplier * 5.0);
+		double clamped = clamp(price, base * windowMultiplier * 0.2, base * windowMultiplier * 5.0);
+		return applyFatigueMultiplier(item, clamped);
 	}
 
 	public double sell(Player player, ItemStack item, int quantity) {
@@ -292,5 +298,15 @@ public class MarketService {
 			case "HUNTER" -> category == MarketItemTag.MOB;
 			default -> false;
 		};
+	}
+
+	private double applyFatigueMultiplier(ItemStack item, double price) {
+		if (soilFatigueService == null) {
+			return price;
+		}
+		if (MarketItemTag.fromMaterial(item.getType()) != MarketItemTag.CROP) {
+			return price;
+		}
+		return price * soilFatigueService.getMultiplier(item);
 	}
 }

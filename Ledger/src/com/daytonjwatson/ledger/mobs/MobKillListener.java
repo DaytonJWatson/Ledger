@@ -1,5 +1,6 @@
 package com.daytonjwatson.ledger.mobs;
 
+import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.economy.MoneyService;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
@@ -19,11 +20,13 @@ import java.util.UUID;
 
 public class MobKillListener implements Listener {
 	private static final String SPAWNER_META = "profitSpawner";
+	private final ConfigManager configManager;
 	private final MobPayoutService mobPayoutService;
 	private final MoneyService moneyService;
 	private final Map<UUID, KillContext> killContexts = new HashMap<>();
 
-	public MobKillListener(MobPayoutService mobPayoutService, MoneyService moneyService) {
+	public MobKillListener(ConfigManager configManager, MobPayoutService mobPayoutService, MoneyService moneyService) {
+		this.configManager = configManager;
 		this.mobPayoutService = mobPayoutService;
 		this.moneyService = moneyService;
 	}
@@ -49,17 +52,22 @@ public class MobKillListener implements Listener {
 			return;
 		}
 		double multiplier = 1.0;
+		double spawnerMultiplier = configManager.getConfig().getDouble("mob.spawnerMultiplier", 0.20);
 		if (event.getEntity().hasMetadata(SPAWNER_META)) {
-			multiplier *= 0.20;
+			multiplier *= spawnerMultiplier;
 		}
 		KillContext context = killContexts.computeIfAbsent(killer.getUniqueId(), ignored -> new KillContext());
 		Chunk chunk = event.getEntity().getLocation().getChunk();
 		long now = System.currentTimeMillis();
-		if (context.lastChunk != null && context.lastChunk.equals(chunk) && now - context.lastKillTime < 45000) {
-			multiplier *= 0.60;
+		long windowMs = configManager.getConfig().getLong("mob.sameChunkWindowSeconds", 45L) * 1000L;
+		double sameChunkMultiplier = configManager.getConfig().getDouble("mob.sameChunkMultiplier", 0.60);
+		if (windowMs > 0) {
+			context.prune(now, windowMs);
+			if (context.isRecent(chunk, now, windowMs)) {
+				multiplier *= sameChunkMultiplier;
+			}
+			context.record(chunk, now);
 		}
-		context.lastChunk = chunk;
-		context.lastKillTime = now;
 		long earned = Math.round(payout * multiplier);
 		if (earned <= 0) {
 			return;
@@ -70,7 +78,25 @@ public class MobKillListener implements Listener {
 	}
 
 	private static class KillContext {
-		private Chunk lastChunk;
-		private long lastKillTime;
+		private final Map<ChunkKey, Long> recentKills = new HashMap<>();
+
+		private boolean isRecent(Chunk chunk, long now, long windowMs) {
+			Long last = recentKills.get(new ChunkKey(chunk));
+			return last != null && now - last < windowMs;
+		}
+
+		private void record(Chunk chunk, long now) {
+			recentKills.put(new ChunkKey(chunk), now);
+		}
+
+		private void prune(long now, long windowMs) {
+			recentKills.entrySet().removeIf(entry -> now - entry.getValue() > windowMs);
+		}
+	}
+
+	private record ChunkKey(UUID worldId, int x, int z) {
+		private ChunkKey(Chunk chunk) {
+			this(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
+		}
 	}
 }
