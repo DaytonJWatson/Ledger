@@ -6,6 +6,8 @@ import com.daytonjwatson.ledger.economy.DeathPenaltyListener;
 import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.farming.CropHarvestListener;
 import com.daytonjwatson.ledger.farming.SoilFatigueService;
+import com.daytonjwatson.ledger.gui.GuiListener;
+import com.daytonjwatson.ledger.gui.GuiManager;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
 import com.daytonjwatson.ledger.market.DepletionListener;
@@ -50,6 +52,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private ScarcityWindowService scarcityWindowService;
 	private SoilFatigueService soilFatigueService;
 	private AnimalSellService animalSellService;
+	private GuiManager guiManager;
 	
 	@Override
 	public void onEnable() {
@@ -77,6 +80,7 @@ public class LedgerPlugin extends JavaPlugin {
 		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
 		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
+		this.guiManager = new GuiManager(spawnRegionService);
 
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService), this);
 		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
@@ -87,6 +91,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
+		Bukkit.getPluginManager().registerEvents(new GuiListener(guiManager), this);
 
 		getCommand("sell").setExecutor(new com.daytonjwatson.ledger.spawn.SellCommand(spawnRegionService, marketService, moneyService));
 		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));
