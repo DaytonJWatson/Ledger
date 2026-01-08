@@ -3,7 +3,9 @@ package com.daytonjwatson.ledger.tools;
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.spawn.SpawnRegionService;
+import com.daytonjwatson.ledger.upgrades.UpgradeService;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -14,13 +16,15 @@ public class ToolVendorService {
 	private final double globalBase;
 	private final MoneyService moneyService;
 	private final SpawnRegionService spawnRegionService;
+	private final UpgradeService upgradeService;
 	private final Map<ToolType, Double> typeWeights = new EnumMap<>(ToolType.class);
 	private final Map<ToolTier, Double> tierMultipliers = new EnumMap<>(ToolTier.class);
 
-	public ToolVendorService(ConfigManager configManager, MoneyService moneyService, SpawnRegionService spawnRegionService) {
+	public ToolVendorService(ConfigManager configManager, MoneyService moneyService, SpawnRegionService spawnRegionService, UpgradeService upgradeService) {
 		this.globalBase = configManager.getConfig().getDouble("tools.globalBase", 8000.0);
 		this.moneyService = moneyService;
 		this.spawnRegionService = spawnRegionService;
+		this.upgradeService = upgradeService;
 		loadDefaults();
 	}
 
@@ -60,6 +64,7 @@ public class ToolVendorService {
 			return false;
 		}
 		ItemStack item = new ItemStack(type.getMaterialForTier(tier));
+		applyVariant(item, tier, variant);
 		player.getInventory().addItem(item);
 		return true;
 	}
@@ -68,12 +73,34 @@ public class ToolVendorService {
 		if (tier == ToolTier.WOOD || tier == ToolTier.STONE) {
 			return true;
 		}
-		int unlocked = moneyService.getVendorTierUnlocked(player.getUniqueId());
+		int tierLevel = getTierLevel(tier);
+		return upgradeService.hasVendorTierUnlocked(player.getUniqueId(), tierLevel);
+	}
+
+	private void applyVariant(ItemStack item, ToolTier tier, ToolVariant variant) {
+		if (variant == ToolVariant.EFFICIENCY) {
+			item.addEnchantment(Enchantment.DIG_SPEED, getEfficiencyLevel(tier));
+		} else if (variant == ToolVariant.SILK_TOUCH) {
+			item.addEnchantment(Enchantment.SILK_TOUCH, 1);
+		}
+	}
+
+	private int getEfficiencyLevel(ToolTier tier) {
 		return switch (tier) {
-			case IRON -> unlocked >= 1;
-			case DIAMOND -> unlocked >= 2;
-			case NETHERITE -> unlocked >= 3;
-			default -> true;
+			case WOOD -> 2;
+			case STONE -> 2;
+			case IRON -> 3;
+			case DIAMOND -> 4;
+			case NETHERITE -> 5;
+		};
+	}
+
+	private int getTierLevel(ToolTier tier) {
+		return switch (tier) {
+			case IRON -> 1;
+			case DIAMOND -> 2;
+			case NETHERITE -> 3;
+			default -> 0;
 		};
 	}
 

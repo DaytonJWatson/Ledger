@@ -55,6 +55,48 @@ public class UpgradeService {
 		return moneyService.getSpecializationChoice(uuid);
 	}
 
+	public boolean hasVendorTierUnlocked(UUID uuid, int tier) {
+		if (tier <= 0) {
+			return true;
+		}
+		for (UpgradeDefinition definition : definitions.values()) {
+			if (definition.getUnlocksVendorTier() < tier) {
+				continue;
+			}
+			if (hasUpgrade(uuid, definition.getId()) && meetsPrerequisites(uuid, definition)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean meetsPrerequisites(UUID uuid, String upgradeId) {
+		UpgradeDefinition definition = getDefinition(upgradeId);
+		if (definition == null) {
+			return false;
+		}
+		return meetsPrerequisites(uuid, definition);
+	}
+
+	private boolean meetsPrerequisites(UUID uuid, UpgradeDefinition definition) {
+		if (definition == null) {
+			return false;
+		}
+		String specializationRequirement = definition.getSpecializationRequirement();
+		if (specializationRequirement != null && !specializationRequirement.isBlank()) {
+			String choice = getSpecializationChoice(uuid);
+			if (choice == null || !choice.equalsIgnoreCase(specializationRequirement)) {
+				return false;
+			}
+		}
+		for (String prerequisite : definition.getPrerequisites()) {
+			if (!hasUpgrade(uuid, prerequisite)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public PurchaseResult purchaseUpgrade(Player player, String upgradeId) {
 		if (player == null) {
 			return PurchaseResult.failure("Players only.");
