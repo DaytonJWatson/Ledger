@@ -10,6 +10,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class SellCommand implements CommandExecutor {
 	private final SpawnRegionService spawnRegionService;
 	private final MarketService marketService;
@@ -43,6 +46,17 @@ public class SellCommand implements CommandExecutor {
 
 	private boolean sellInventory(Player player) {
 		ItemStack[] items = player.getInventory().getContents();
+		Map<Material, Integer> sellableCounts = new HashMap<>();
+		for (ItemStack item : items) {
+			if (item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			if (marketService.getSellPrice(item) <= 0.0) {
+				continue;
+			}
+			sellableCounts.merge(item.getType(), item.getAmount(), Integer::sum);
+		}
+		int distinctTypes = sellableCounts.size();
 		long total = 0;
 		int soldCount = 0;
 		for (int i = 0; i < items.length; i++) {
@@ -50,7 +64,7 @@ public class SellCommand implements CommandExecutor {
 			if (item == null || item.getType() == Material.AIR) {
 				continue;
 			}
-			double value = marketService.getSellPrice(item);
+			double value = marketService.getSellPrice(player, item, distinctTypes);
 			if (value <= 0.0) {
 				continue;
 			}
@@ -75,7 +89,7 @@ public class SellCommand implements CommandExecutor {
 			player.sendMessage(ChatColor.RED + "Hold an item to sell.");
 			return true;
 		}
-		double value = marketService.getSellPrice(item);
+		double value = marketService.getSellPrice(player, item);
 		if (value <= 0.0) {
 			player.sendMessage(ChatColor.RED + "That item cannot be sold.");
 			return true;

@@ -51,6 +51,14 @@ public class MoneyService {
 			PlayerBalance balance = new PlayerBalance();
 			balance.banked = entry.getLong("banked", 0L);
 			balance.carried = entry.getLong("carried", 0L);
+			balance.specializationChoice = entry.getString("specializationChoice", null);
+			balance.vendorTierUnlocked = entry.getInt("vendorTierUnlocked", 0);
+			ConfigurationSection upgradesSection = entry.getConfigurationSection("upgrades");
+			if (upgradesSection != null) {
+				for (String upgradeId : upgradesSection.getKeys(false)) {
+					balance.upgrades.put(upgradeId.toLowerCase(), upgradesSection.getInt(upgradeId, 0));
+				}
+			}
 			balances.put(uuid, balance);
 		}
 	}
@@ -60,8 +68,21 @@ public class MoneyService {
 		ConfigurationSection playersSection = yaml.createSection("players");
 		for (Map.Entry<UUID, PlayerBalance> entry : balances.entrySet()) {
 			ConfigurationSection playerSection = playersSection.createSection(entry.getKey().toString());
-			playerSection.set("banked", entry.getValue().banked);
-			playerSection.set("carried", entry.getValue().carried);
+			PlayerBalance balance = entry.getValue();
+			playerSection.set("banked", balance.banked);
+			playerSection.set("carried", balance.carried);
+			if (balance.specializationChoice != null && !balance.specializationChoice.isBlank()) {
+				playerSection.set("specializationChoice", balance.specializationChoice);
+			}
+			if (balance.vendorTierUnlocked > 0) {
+				playerSection.set("vendorTierUnlocked", balance.vendorTierUnlocked);
+			}
+			ConfigurationSection upgradesSection = playerSection.createSection("upgrades");
+			for (Map.Entry<String, Integer> upgradeEntry : balance.upgrades.entrySet()) {
+				if (upgradeEntry.getValue() != null && upgradeEntry.getValue() > 0) {
+					upgradesSection.set(upgradeEntry.getKey(), upgradeEntry.getValue());
+				}
+			}
 		}
 		try {
 			AtomicFileWriter.writeAtomically(playersFile, yaml.saveToString().getBytes());
@@ -155,8 +176,53 @@ public class MoneyService {
 		double baseLoss = configManager.getConfig().getDouble("economy.loss.base", 0.30);
 		double floor = configManager.getConfig().getDouble("economy.loss.floor", 0.10);
 		double loss = Math.max(floor, baseLoss);
-		long newCarried = Math.round(balance.carried * (1.0 - loss));
+		applyDeathLoss(player, loss);
+	}
+
+	public void applyDeathLoss(Player player, double loss) {
+		PlayerBalance balance = getBalance(player.getUniqueId());
+		double clamped = Math.max(0.0, Math.min(1.0, loss));
+		long newCarried = Math.round(balance.carried * (1.0 - clamped));
 		balance.carried = Math.max(0, newCarried);
+	}
+
+	public int getUpgradeLevel(UUID uuid, String upgradeId) {
+		if (upgradeId == null) {
+			return 0;
+		}
+		return getBalance(uuid).upgrades.getOrDefault(upgradeId.toLowerCase(), 0);
+	}
+
+	public void setUpgradeLevel(UUID uuid, String upgradeId, int level) {
+		if (upgradeId == null) {
+			return;
+		}
+		PlayerBalance balance = getBalance(uuid);
+		if (level <= 0) {
+			balance.upgrades.remove(upgradeId.toLowerCase());
+			return;
+		}
+		balance.upgrades.put(upgradeId.toLowerCase(), level);
+	}
+
+	public boolean hasUpgrade(UUID uuid, String upgradeId) {
+		return getUpgradeLevel(uuid, upgradeId) > 0;
+	}
+
+	public String getSpecializationChoice(UUID uuid) {
+		return getBalance(uuid).specializationChoice;
+	}
+
+	public void setSpecializationChoice(UUID uuid, String choice) {
+		getBalance(uuid).specializationChoice = choice;
+	}
+
+	public int getVendorTierUnlocked(UUID uuid) {
+		return getBalance(uuid).vendorTierUnlocked;
+	}
+
+	public void setVendorTierUnlocked(UUID uuid, int tier) {
+		getBalance(uuid).vendorTierUnlocked = Math.max(0, tier);
 	}
 
 	private PlayerBalance getBalance(UUID uuid) {
@@ -166,5 +232,8 @@ public class MoneyService {
 	private static class PlayerBalance {
 		private long carried;
 		private long banked;
+		private String specializationChoice;
+		private int vendorTierUnlocked;
+		private final Map<String, Integer> upgrades = new ConcurrentHashMap<>();
 	}
 }

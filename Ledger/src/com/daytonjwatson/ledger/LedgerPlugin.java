@@ -19,6 +19,8 @@ import com.daytonjwatson.ledger.tools.EnchantBlockListener;
 import com.daytonjwatson.ledger.tools.ToolVendorCommand;
 import com.daytonjwatson.ledger.tools.ToolVendorService;
 import com.daytonjwatson.ledger.util.AtomicFileWriter;
+import com.daytonjwatson.ledger.upgrades.UpgradeCommand;
+import com.daytonjwatson.ledger.upgrades.UpgradeService;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -29,6 +31,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private MarketStorageYaml marketStorage;
 	private MarketService marketService;
 	private MoneyService moneyService;
+	private UpgradeService upgradeService;
 	private SpawnRegionService spawnRegionService;
 	private BankService bankService;
 	private LoreValueService loreValueService;
@@ -50,7 +53,8 @@ public class LedgerPlugin extends JavaPlugin {
 		this.moneyService = new MoneyService(this, configManager);
 		moneyService.load();
 
-		this.marketService = new MarketService(configManager, marketState);
+		this.upgradeService = new UpgradeService(configManager, moneyService, spawnRegionService);
+		this.marketService = new MarketService(configManager, marketState, upgradeService);
 		this.bankService = new BankService(spawnRegionService, moneyService);
 		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService);
 		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this), spawnRegionService, toolVendorService);
@@ -58,7 +62,7 @@ public class LedgerPlugin extends JavaPlugin {
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
 
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService), this);
-		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService), this);
+		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
 		Bukkit.getPluginManager().registerEvents(new MobKillListener(mobPayoutService, moneyService), this);
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
@@ -67,6 +71,9 @@ public class LedgerPlugin extends JavaPlugin {
 		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));
 		getCommand("balance").setExecutor(new com.daytonjwatson.ledger.economy.BalanceCommand(moneyService));
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
+		UpgradeCommand upgradeCommand = new UpgradeCommand(upgradeService);
+		getCommand("upgrade").setExecutor(upgradeCommand);
+		getCommand("upgrades").setExecutor(upgradeCommand);
 
 		new InventoryScanScheduler(this, loreValueService).start();
 
