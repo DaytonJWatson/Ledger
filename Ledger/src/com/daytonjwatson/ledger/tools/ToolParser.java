@@ -48,4 +48,14 @@ public final class ToolParser {
 		}
 		return null;
 	}
+
+	public static ToolSpec getSpec(Material material, ToolVendorService.ToolVariant variant) {
+		ToolVendorService.ToolType type = getType(material);
+		ToolVendorService.ToolTier tier = getTier(material);
+		if (type == null || tier == null) {
+			return null;
+		}
+		ToolVendorService.ToolVariant chosen = variant == null ? ToolVendorService.ToolVariant.STANDARD : variant;
+		return new ToolSpec(type, tier, chosen);
+	}
 }

@@ -13,6 +13,7 @@ import com.daytonjwatson.ledger.gui.MenuId;
 import com.daytonjwatson.ledger.gui.menus.HubMenu;
 import com.daytonjwatson.ledger.gui.menus.PlaceholderMenu;
 import com.daytonjwatson.ledger.gui.menus.SellMenu;
+import com.daytonjwatson.ledger.gui.menus.ToolsMenu;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
 import com.daytonjwatson.ledger.market.DepletionListener;
@@ -53,6 +54,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private LoreValueService loreValueService;
 	private ToolVendorService toolVendorService;
 	private RepairService repairService;
+	private ToolMetaService toolMetaService;
 	private MobPayoutService mobPayoutService;
 	private SilkTouchMarkService silkTouchMarkService;
 	private ScarcityWindowService scarcityWindowService;
@@ -82,8 +84,9 @@ public class LedgerPlugin extends JavaPlugin {
 		soilFatigueService.load();
 		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService, scarcityWindowService, soilFatigueService);
 		this.bankService = new BankService(spawnRegionService, moneyService);
-		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService);
-		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this), spawnRegionService, toolVendorService);
+		this.toolMetaService = new ToolMetaService(this);
+		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService, toolMetaService);
+		this.repairService = new RepairService(configManager, moneyService, toolMetaService, spawnRegionService, toolVendorService);
 		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
 		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
@@ -92,7 +95,7 @@ public class LedgerPlugin extends JavaPlugin {
 		guiManager.register(new HubMenu(guiManager, moneyService));
 		guiManager.register(new SellMenu(guiManager, marketService, sellService));
 		guiManager.register(new PlaceholderMenu(MenuId.BANK, "Bank"));
-		guiManager.register(new PlaceholderMenu(MenuId.TOOLS, "Tools"));
+		guiManager.register(new ToolsMenu(guiManager, moneyService, toolVendorService, spawnRegionService));
 		guiManager.register(new PlaceholderMenu(MenuId.UPGRADES, "Upgrades"));
 		guiManager.register(new PlaceholderMenu(MenuId.REPAIR, "Repair"));
 
