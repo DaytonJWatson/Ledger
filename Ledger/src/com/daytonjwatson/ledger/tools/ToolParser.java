@@ -17,6 +17,9 @@ public final class ToolParser {
 		if (name.startsWith("STONE_")) {
 			return ToolVendorService.ToolTier.STONE;
 		}
+		if (name.startsWith("COPPER_")) {
+			return ToolVendorService.ToolTier.COPPER;
+		}
 		if (name.startsWith("IRON_")) {
 			return ToolVendorService.ToolTier.IRON;
 		}
