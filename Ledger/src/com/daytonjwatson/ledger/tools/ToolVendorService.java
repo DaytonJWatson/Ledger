@@ -20,6 +20,7 @@ public class ToolVendorService {
 	private final ToolMetaService toolMetaService;
 	private final Map<ToolType, Double> typeWeights = new EnumMap<>(ToolType.class);
 	private final Map<ToolTier, Double> tierMultipliers = new EnumMap<>(ToolTier.class);
+	private final Map<Material, Double> miscMultipliers = new EnumMap<>(Material.class);
 
 	public ToolVendorService(ConfigManager configManager, MoneyService moneyService, SpawnRegionService spawnRegionService, UpgradeService upgradeService, ToolMetaService toolMetaService) {
 		this.globalBase = configManager.getConfig().getDouble("tools.globalBase", 8000.0);
@@ -41,6 +42,23 @@ public class ToolVendorService {
 		tierMultipliers.put(ToolTier.IRON, 1.00);
 		tierMultipliers.put(ToolTier.DIAMOND, 3.50);
 		tierMultipliers.put(ToolTier.NETHERITE, 12.00);
+		miscMultipliers.put(Material.FLINT_AND_STEEL, 0.20);
+		miscMultipliers.put(Material.SHEARS, 0.18);
+		miscMultipliers.put(Material.BUCKET, 0.22);
+		miscMultipliers.put(Material.FISHING_ROD, 0.22);
+		miscMultipliers.put(Material.BRUSH, 0.18);
+		miscMultipliers.put(Material.BUNDLE, 0.25);
+		miscMultipliers.put(Material.COMPASS, 0.30);
+		miscMultipliers.put(Material.CLOCK, 0.30);
+		miscMultipliers.put(Material.SPYGLASS, 0.35);
+		miscMultipliers.put(Material.ELYTRA, 1.50);
+		miscMultipliers.put(Material.LEAD, 0.18);
+		miscMultipliers.put(Material.MAP, 0.20);
+		miscMultipliers.put(Material.ENDER_PEARL, 0.40);
+		miscMultipliers.put(Material.SADDLE, 0.45);
+		miscMultipliers.put(Material.CARROT_ON_A_STICK, 0.28);
+		miscMultipliers.put(Material.WARPED_FUNGUS_ON_A_STICK, 0.28);
+		miscMultipliers.put(Material.OAK_BOAT, 0.16);
 	}
 
 	public long getBuyPrice(ToolType type, ToolTier tier, ToolVariant variant) {
@@ -60,6 +78,14 @@ public class ToolVendorService {
 			return 0L;
 		}
 		return getBuyPrice(spec.getType(), spec.getTier(), spec.getVariant());
+	}
+
+	public long getMiscPrice(Material material) {
+		if (material == null) {
+			return 0L;
+		}
+		double multiplier = miscMultipliers.getOrDefault(material, 0.20);
+		return Math.round(globalBase * multiplier);
 	}
 
 	public boolean purchaseTool(Player player, ToolType type, ToolTier tier, ToolVariant variant) {
