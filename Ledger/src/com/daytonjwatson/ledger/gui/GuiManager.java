@@ -17,11 +17,13 @@ public class GuiManager {
 	private final SpawnRegionService spawnRegionService;
 	private final Map<MenuId, LedgerMenu> menus;
 	private final Map<UUID, MenuId> sessions;
+	private final Map<UUID, Integer> upgradePages;
 
 	public GuiManager(SpawnRegionService spawnRegionService) {
 		this.spawnRegionService = spawnRegionService;
 		this.menus = new EnumMap<>(MenuId.class);
 		this.sessions = new ConcurrentHashMap<>();
+		this.upgradePages = new ConcurrentHashMap<>();
 	}
 
 	public void register(LedgerMenu menu) {
@@ -40,6 +42,15 @@ public class GuiManager {
 
 	public void clearSession(UUID playerId) {
 		sessions.remove(playerId);
+		upgradePages.remove(playerId);
+	}
+
+	public int getUpgradePage(UUID playerId) {
+		return upgradePages.getOrDefault(playerId, 0);
+	}
+
+	public void setUpgradePage(UUID playerId, int page) {
+		upgradePages.put(playerId, Math.max(0, page));
 	}
 
 	public boolean isLedgerMenu(InventoryView view) {
@@ -71,7 +82,7 @@ public class GuiManager {
 		if (menuId == null || player == null) {
 			return;
 		}
-		if (!spawnRegionService.isInSpawn(player.getLocation())) {
+		if (menuId == MenuId.UPGRADES && !spawnRegionService.isInSpawn(player.getLocation())) {
 			player.sendMessage(ChatColor.RED + "You can only use menus at spawn.");
 			return;
 		}
