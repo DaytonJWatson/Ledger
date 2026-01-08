@@ -3,12 +3,15 @@ package com.daytonjwatson.ledger.economy;
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.util.AtomicFileWriter;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,10 +29,10 @@ public class MoneyService {
 	}
 
 	public void load() {
-		if (!playersFile.exists()) {
+		YamlConfiguration yaml = loadWithBackup();
+		if (yaml == null) {
 			return;
 		}
-		YamlConfiguration yaml = YamlConfiguration.loadConfiguration(playersFile);
 		ConfigurationSection playersSection = yaml.getConfigurationSection("players");
 		if (playersSection == null) {
 			return;
@@ -39,7 +42,12 @@ public class MoneyService {
 			if (entry == null) {
 				continue;
 			}
-			UUID uuid = UUID.fromString(key);
+			UUID uuid;
+			try {
+				uuid = UUID.fromString(key);
+			} catch (IllegalArgumentException ex) {
+				continue;
+			}
 			PlayerBalance balance = new PlayerBalance();
 			balance.banked = entry.getLong("banked", 0L);
 			balance.carried = entry.getLong("carried", 0L);
@@ -59,6 +67,38 @@ public class MoneyService {
 			AtomicFileWriter.writeAtomically(playersFile, yaml.saveToString().getBytes());
 		} catch (IOException e) {
 			plugin.getLogger().warning("Failed to save players.yml: " + e.getMessage());
+		}
+	}
+
+	private YamlConfiguration loadWithBackup() {
+		File tmp = new File(playersFile.getParentFile(), playersFile.getName() + ".tmp");
+		if (tmp.exists() && !tmp.delete()) {
+			plugin.getLogger().warning("Unable to delete stale players temp file: " + tmp.getName());
+		}
+		YamlConfiguration primary = loadConfig(playersFile);
+		if (primary != null && !primary.getKeys(false).isEmpty()) {
+			return primary;
+		}
+		File backup = new File(playersFile.getParentFile(), playersFile.getName() + ".bak");
+		YamlConfiguration backupConfig = loadConfig(backup);
+		if (backupConfig != null) {
+			return backupConfig;
+		}
+		return primary != null ? primary : new YamlConfiguration();
+	}
+
+	private YamlConfiguration loadConfig(File file) {
+		if (!file.exists()) {
+			return null;
+		}
+		try {
+			String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+			YamlConfiguration yaml = new YamlConfiguration();
+			yaml.loadFromString(content);
+			return yaml;
+		} catch (IOException | InvalidConfigurationException e) {
+			plugin.getLogger().warning("Failed to load " + file.getName() + ": " + e.getMessage());
+			return null;
 		}
 	}
 

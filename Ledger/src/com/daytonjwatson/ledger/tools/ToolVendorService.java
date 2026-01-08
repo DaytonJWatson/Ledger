@@ -2,6 +2,7 @@ package com.daytonjwatson.ledger.tools;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.economy.MoneyService;
+import com.daytonjwatson.ledger.spawn.SpawnRegionService;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -12,12 +13,14 @@ import java.util.Map;
 public class ToolVendorService {
 	private final double globalBase;
 	private final MoneyService moneyService;
+	private final SpawnRegionService spawnRegionService;
 	private final Map<ToolType, Double> typeWeights = new EnumMap<>(ToolType.class);
 	private final Map<ToolTier, Double> tierMultipliers = new EnumMap<>(ToolTier.class);
 
-	public ToolVendorService(ConfigManager configManager, MoneyService moneyService) {
+	public ToolVendorService(ConfigManager configManager, MoneyService moneyService, SpawnRegionService spawnRegionService) {
 		this.globalBase = configManager.getConfig().getDouble("tools.globalBase", 8000.0);
 		this.moneyService = moneyService;
+		this.spawnRegionService = spawnRegionService;
 		loadDefaults();
 	}
 
@@ -46,6 +49,9 @@ public class ToolVendorService {
 	}
 
 	public boolean purchaseTool(Player player, ToolType type, ToolTier tier, ToolVariant variant) {
+		if (!spawnRegionService.isInSpawn(player.getLocation())) {
+			return false;
+		}
 		long price = getBuyPrice(type, tier, variant);
 		if (!moneyService.removeBanked(player, price)) {
 			return false;
