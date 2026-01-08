@@ -100,6 +100,9 @@ public class LoreValueService implements Listener {
 	@EventHandler
 	public void onPickup(EntityPickupItemEvent event) {
 		if (event.getEntity() instanceof Player player) {
+			ItemStack stack = event.getItem().getItemStack();
+			updateItemLore(player, stack);
+			event.getItem().setItemStack(stack);
 			updatePlayerInventory(player);
 		}
 	}
