@@ -14,6 +14,8 @@ import com.daytonjwatson.ledger.mobs.MobPayoutService;
 import com.daytonjwatson.ledger.spawn.SpawnInteractionListener;
 import com.daytonjwatson.ledger.spawn.SpawnRegionService;
 import com.daytonjwatson.ledger.tools.RepairService;
+import com.daytonjwatson.ledger.tools.SilkTouchMarkListener;
+import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.tools.ToolMetaService;
 import com.daytonjwatson.ledger.tools.EnchantBlockListener;
 import com.daytonjwatson.ledger.tools.ToolVendorCommand;
@@ -38,6 +40,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private ToolVendorService toolVendorService;
 	private RepairService repairService;
 	private MobPayoutService mobPayoutService;
+	private SilkTouchMarkService silkTouchMarkService;
 	
 	@Override
 	public void onEnable() {
@@ -54,9 +57,10 @@ public class LedgerPlugin extends JavaPlugin {
 		moneyService.load();
 
 		this.upgradeService = new UpgradeService(configManager, moneyService, spawnRegionService);
-		this.marketService = new MarketService(configManager, marketState, upgradeService);
+		this.silkTouchMarkService = new SilkTouchMarkService(this);
+		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService);
 		this.bankService = new BankService(spawnRegionService, moneyService);
-		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService);
+		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService);
 		this.repairService = new RepairService(configManager, moneyService, new ToolMetaService(this), spawnRegionService, toolVendorService);
 		this.mobPayoutService = new MobPayoutService(configManager, marketState);
 		this.loreValueService = new LoreValueService(this, configManager, marketService);
@@ -66,6 +70,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(new MobKillListener(mobPayoutService, moneyService), this);
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
+		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
 
 		getCommand("sell").setExecutor(new com.daytonjwatson.ledger.spawn.SellCommand(spawnRegionService, marketService, moneyService));
 		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));

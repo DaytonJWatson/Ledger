@@ -2,6 +2,7 @@ package com.daytonjwatson.ledger.market;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
+import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.upgrades.UpgradeService;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -19,14 +20,16 @@ public class MarketService {
 	private final MarketState marketState;
 	private final PriceTable priceTable;
 	private final UpgradeService upgradeService;
+	private final SilkTouchMarkService silkTouchMarkService;
 	private final Map<String, Double> priceCache = new HashMap<>();
 	private long marketVersion = 0;
 	private long priceCacheVersion = -1;
 
-	public MarketService(ConfigManager configManager, MarketState marketState, UpgradeService upgradeService) {
+	public MarketService(ConfigManager configManager, MarketState marketState, UpgradeService upgradeService, SilkTouchMarkService silkTouchMarkService) {
 		this.configManager = configManager;
 		this.marketState = marketState;
 		this.upgradeService = upgradeService;
+		this.silkTouchMarkService = silkTouchMarkService;
 		this.priceTable = new PriceTable(configManager.getPrices());
 	}
 
@@ -34,7 +37,11 @@ public class MarketService {
 		if (item == null || item.getType() == Material.AIR) {
 			return 0.0;
 		}
-		return getSellPrice(item.getType().name());
+		double base = getSellPrice(item.getType().name());
+		if (base <= 0.0) {
+			return 0.0;
+		}
+		return base * silkTouchMarkService.getSellMultiplier(item);
 	}
 
 	public double getSellPrice(String key) {
