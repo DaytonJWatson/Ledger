@@ -79,7 +79,7 @@ public class ToolVendorService {
 
 	private void applyVariant(ItemStack item, ToolTier tier, ToolVariant variant) {
 		if (variant == ToolVariant.EFFICIENCY) {
-			item.addEnchantment(Enchantment.DIG_SPEED, getEfficiencyLevel(tier));
+			item.addEnchantment(Enchantment.EFFICIENCY, getEfficiencyLevel(tier));
 		} else if (variant == ToolVariant.SILK_TOUCH) {
 			item.addEnchantment(Enchantment.SILK_TOUCH, 1);
 		}
