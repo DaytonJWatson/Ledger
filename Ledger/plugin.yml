@@ -6,19 +6,25 @@ api-version: '1.21'
 main: com.daytonjwatson.ledger.LedgerPlugin
 commands:
   sell:
-    description: Sell items at spawn.
-    usage: /sell [inventory|hand]
+    description: Open the sell menu.
+    usage: /sell
   bank:
-    description: Bank deposit commands.
-    usage: /bank deposit <amount|all>
+    description: Open the bank menu.
+    usage: /bank
   balance:
     description: View carried and banked money.
     usage: /balance
   tool:
     description: Tool vendor actions.
     usage: /tool buy <type> <tier> [variant] | /tool repair
+  tools:
+    description: Open the tools menu.
+    usage: /tools
+  repair:
+    description: Open the repair menu.
+    usage: /repair
   upgrades:
-    description: View upgrade progress.
+    description: Open the upgrades menu.
     usage: /upgrades
   upgrade:
     description: Purchase upgrades.

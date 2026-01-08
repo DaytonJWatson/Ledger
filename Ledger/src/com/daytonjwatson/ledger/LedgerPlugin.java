@@ -9,6 +9,7 @@ import com.daytonjwatson.ledger.farming.SoilFatigueService;
 import com.daytonjwatson.ledger.gui.HubCommand;
 import com.daytonjwatson.ledger.gui.GuiListener;
 import com.daytonjwatson.ledger.gui.GuiManager;
+import com.daytonjwatson.ledger.gui.MenuCommand;
 import com.daytonjwatson.ledger.gui.MenuId;
 import com.daytonjwatson.ledger.gui.menus.BankMenu;
 import com.daytonjwatson.ledger.gui.menus.HubMenu;
@@ -112,14 +113,16 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
 		Bukkit.getPluginManager().registerEvents(new GuiListener(guiManager), this);
 
-		getCommand("sell").setExecutor(new com.daytonjwatson.ledger.spawn.SellCommand(spawnRegionService, sellService));
-		getCommand("bank").setExecutor(new com.daytonjwatson.ledger.economy.BankCommand(bankService, spawnRegionService));
+		getCommand("sell").setExecutor(new MenuCommand(guiManager, MenuId.SELL));
+		getCommand("bank").setExecutor(new MenuCommand(guiManager, MenuId.BANK));
 		getCommand("balance").setExecutor(new com.daytonjwatson.ledger.economy.BalanceCommand(moneyService));
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
+		getCommand("tools").setExecutor(new MenuCommand(guiManager, MenuId.TOOLS));
+		getCommand("repair").setExecutor(new MenuCommand(guiManager, MenuId.REPAIR));
 		getCommand("ledger").setExecutor(new HubCommand(guiManager));
 		UpgradeCommand upgradeCommand = new UpgradeCommand(upgradeService);
 		getCommand("upgrade").setExecutor(upgradeCommand);
-		getCommand("upgrades").setExecutor(upgradeCommand);
+		getCommand("upgrades").setExecutor(new MenuCommand(guiManager, MenuId.UPGRADES));
 
 		new InventoryScanScheduler(this, loreValueService).start();
 
