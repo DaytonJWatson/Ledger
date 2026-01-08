@@ -10,6 +10,7 @@ import com.daytonjwatson.ledger.gui.HubCommand;
 import com.daytonjwatson.ledger.gui.GuiListener;
 import com.daytonjwatson.ledger.gui.GuiManager;
 import com.daytonjwatson.ledger.gui.MenuId;
+import com.daytonjwatson.ledger.gui.menus.BankMenu;
 import com.daytonjwatson.ledger.gui.menus.HubMenu;
 import com.daytonjwatson.ledger.gui.menus.PlaceholderMenu;
 import com.daytonjwatson.ledger.gui.menus.SellMenu;
@@ -94,7 +95,7 @@ public class LedgerPlugin extends JavaPlugin {
 		this.guiManager = new GuiManager(spawnRegionService);
 		guiManager.register(new HubMenu(guiManager, moneyService));
 		guiManager.register(new SellMenu(guiManager, marketService, sellService));
-		guiManager.register(new PlaceholderMenu(MenuId.BANK, "Bank"));
+		guiManager.register(new BankMenu(guiManager, moneyService, bankService, spawnRegionService));
 		guiManager.register(new ToolsMenu(guiManager, moneyService, toolVendorService, spawnRegionService));
 		guiManager.register(new PlaceholderMenu(MenuId.UPGRADES, "Upgrades"));
 		guiManager.register(new PlaceholderMenu(MenuId.REPAIR, "Repair"));
