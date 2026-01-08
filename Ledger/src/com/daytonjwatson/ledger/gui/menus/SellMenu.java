@@ -17,6 +17,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -54,7 +55,7 @@ public class SellMenu implements LedgerMenu {
 	}
 
 	@Override
-	public void onClick(Player player, int slot, ItemStack clicked, ClickType type) {
+	public void onClick(Player player, int slot, ItemStack clicked, ClickType type, InventoryClickEvent event) {
 		switch (slot) {
 			case 20 -> handleSellHand(player);
 			case 24 -> handleSellInventory(player);
