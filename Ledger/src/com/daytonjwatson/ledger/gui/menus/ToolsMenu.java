@@ -30,10 +30,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 public class ToolsMenu implements LedgerMenu {
 	private static final int MENU_SIZE = 54;
 	private static final int[] OFFER_SLOTS = {
-		10, 11, 12, 13,
-		19, 20, 21, 22,
-		28, 29, 30, 31,
-		37, 38, 39, 40
+		10, 11, 12, 13, 14, 15, 16,
+		19, 20, 21, 22, 23, 24, 25,
+		28, 29, 30, 31, 32, 33, 34,
+		37, 38, 39, 40, 41, 42, 43
 	};
 	private static final int PAGE_SIZE = OFFER_SLOTS.length;
 	private static final Map<ToolCategory, Integer> TAB_SLOTS = Map.of(
