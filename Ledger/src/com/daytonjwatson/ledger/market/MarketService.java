@@ -4,15 +4,17 @@ import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
 import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.upgrades.UpgradeService;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Recipe;
+import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.inventory.ShapelessRecipe;
 
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 public class MarketService {
@@ -21,15 +23,18 @@ public class MarketService {
 	private final PriceTable priceTable;
 	private final UpgradeService upgradeService;
 	private final SilkTouchMarkService silkTouchMarkService;
+	private final ScarcityWindowService scarcityWindowService;
 	private final Map<String, Double> priceCache = new HashMap<>();
 	private long marketVersion = 0;
 	private long priceCacheVersion = -1;
 
-	public MarketService(ConfigManager configManager, MarketState marketState, UpgradeService upgradeService, SilkTouchMarkService silkTouchMarkService) {
+	public MarketService(ConfigManager configManager, MarketState marketState, UpgradeService upgradeService,
+						 SilkTouchMarkService silkTouchMarkService, ScarcityWindowService scarcityWindowService) {
 		this.configManager = configManager;
 		this.marketState = marketState;
 		this.upgradeService = upgradeService;
 		this.silkTouchMarkService = silkTouchMarkService;
+		this.scarcityWindowService = scarcityWindowService;
 		this.priceTable = new PriceTable(configManager.getPrices());
 	}
 
@@ -89,11 +94,12 @@ public class MarketService {
 		int logisticsLevel = upgradeService.getLevel(uuid, "logistics");
 		String specialization = upgradeService.getSpecializationChoice(uuid);
 		int specializationLevel = getSpecializationLevel(uuid, specialization);
-		double price = base;
+		double windowMultiplier = scarcityWindowService.getWindowMultiplier(player, item.getType().name(), ScarcityWindowService.WindowContext.MARKET);
+		double price = base * windowMultiplier;
 		price *= upgradeService.getBarterMultiplier(barterLevel);
 		price *= upgradeService.getLogisticsMultiplier(logisticsLevel, distinctTypes);
 		price *= upgradeService.getSpecializationMultiplier(specializationLevel, matchesSpecialization(specialization, item));
-		return clamp(price, base * 0.2, base * 5.0);
+		return clamp(price, base * windowMultiplier * 0.2, base * windowMultiplier * 5.0);
 	}
 
 	public double sell(Player player, ItemStack item, int quantity) {
@@ -120,15 +126,131 @@ public class MarketService {
 		marketVersion++;
 	}
 
+	public void recordMining(String key, double quantity) {
+		if (key == null || quantity <= 0.0) {
+			return;
+		}
+		MarketState.ItemState state = marketState.getOrCreateItem(key);
+		state.setMinedTotal(state.getMinedTotal() + quantity);
+		marketVersion++;
+	}
+
 	private double computePrice(PriceTable.PriceEntry entry, String key) {
 		MarketState.ItemState state = marketState.getOrCreateItem(key);
 		decay(state);
 		double supplyFactor = 1.0 / Math.pow(1.0 + (state.getSoldAccumulator() / entry.getCap()), entry.getSigma());
+		double scarcityFactor = getScarcityFactor(entry, key, state);
 		double minFactor = entry.getMinFactor();
 		double maxFactor = entry.getMaxFactor();
-		double raw = entry.getBase() * supplyFactor;
-		double clamped = clamp(raw, entry.getBase() * minFactor, entry.getBase() * maxFactor);
-		return Math.max(0.0, clamped);
+		double raw = entry.getBase() * supplyFactor * scarcityFactor;
+		double clamped = clamp(raw, entry.getBase() * minFactor, entry.getBase() * maxFactor * scarcityFactor);
+		double adjusted = applyAntiArbitrage(entry, key, clamped);
+		return Math.max(0.0, adjusted);
+	}
+
+	private double applyAntiArbitrage(PriceTable.PriceEntry entry, String key, double price) {
+		if (!entry.isInfra()) {
+			return price;
+		}
+		Material material = Material.matchMaterial(key);
+		if (material == null) {
+			return price;
+		}
+		double materialValue = computeMaterialValue(material, key);
+		if (materialValue <= 0.0) {
+			return price;
+		}
+		return Math.min(price, materialValue * 0.85);
+	}
+
+	private double computeMaterialValue(Material material, String key) {
+		for (Recipe recipe : Bukkit.getRecipesFor(new ItemStack(material))) {
+			if (recipe instanceof ShapedRecipe shaped) {
+				double value = computeShapedValue(shaped, key);
+				if (value > 0.0) {
+					return value;
+				}
+			}
+			if (recipe instanceof ShapelessRecipe shapeless) {
+				double value = computeShapelessValue(shapeless, key);
+				if (value > 0.0) {
+					return value;
+				}
+			}
+		}
+		return 0.0;
+	}
+
+	private double computeShapedValue(ShapedRecipe shaped, String key) {
+		Map<Character, Integer> counts = new HashMap<>();
+		for (String row : shaped.getShape()) {
+			for (char symbol : row.toCharArray()) {
+				if (symbol == ' ') {
+					continue;
+				}
+				counts.put(symbol, counts.getOrDefault(symbol, 0) + 1);
+			}
+		}
+		double total = 0.0;
+		for (Map.Entry<Character, ItemStack> entry : shaped.getIngredientMap().entrySet()) {
+			ItemStack ingredient = entry.getValue();
+			if (ingredient == null || ingredient.getType() == Material.AIR) {
+				continue;
+			}
+			String ingredientKey = ingredient.getType().name();
+			if (ingredientKey.equalsIgnoreCase(key)) {
+				return 0.0;
+			}
+			int count = counts.getOrDefault(entry.getKey(), 0);
+			double ingredientPrice = getSellPrice(ingredientKey);
+			if (ingredientPrice <= 0.0 || count <= 0) {
+				return 0.0;
+			}
+			total += ingredientPrice * ingredient.getAmount() * count;
+		}
+		return total;
+	}
+
+	private double computeShapelessValue(ShapelessRecipe shapeless, String key) {
+		double total = 0.0;
+		for (ItemStack ingredient : shapeless.getIngredientList()) {
+			if (ingredient == null || ingredient.getType() == Material.AIR) {
+				continue;
+			}
+			String ingredientKey = ingredient.getType().name();
+			if (ingredientKey.equalsIgnoreCase(key)) {
+				return 0.0;
+			}
+			double ingredientPrice = getSellPrice(ingredientKey);
+			if (ingredientPrice <= 0.0) {
+				return 0.0;
+			}
+			total += ingredientPrice * ingredient.getAmount();
+		}
+		return total;
+	}
+
+	private double getScarcityFactor(PriceTable.PriceEntry entry, String key, MarketState.ItemState state) {
+		double baseline = entry.getBaseline();
+		double rho = entry.getRho();
+		if (baseline <= 0.0 || rho <= 0.0) {
+			MarketItemTag tag = MarketItemTag.fromKey(key);
+			PriceTable.PriceEntry tagEntry = priceTable.getEntry(tag.toTagKey());
+			if (baseline <= 0.0 && tagEntry != null) {
+				baseline = tagEntry.getBaseline();
+			}
+			if (rho <= 0.0 && tagEntry != null) {
+				rho = tagEntry.getRho();
+			}
+		}
+		if (baseline <= 0.0) {
+			baseline = configManager.getConfig().getDouble("market.depletionBaseline", 50000.0);
+		}
+		if (rho <= 0.0) {
+			rho = configManager.getConfig().getDouble("market.scarcityRho", 0.25);
+		}
+		double depletionRatio = clamp(state.getMinedTotal() / baseline, 0.0, 1.0);
+		return 1.0 + rho * depletionRatio;
 	}
 
 	private void decay(MarketState.ItemState state) {
@@ -163,70 +285,12 @@ public class MarketService {
 		if (specialization == null || item == null) {
 			return false;
 		}
-		ItemCategory category = getCategory(item.getType());
+		MarketItemTag category = MarketItemTag.fromMaterial(item.getType());
 		return switch (specialization.toUpperCase(Locale.ROOT)) {
-			case "MINER" -> category == ItemCategory.ORE;
-			case "FARMER" -> category == ItemCategory.CROP;
-			case "HUNTER" -> category == ItemCategory.MOB;
+			case "MINER" -> category == MarketItemTag.ORE;
+			case "FARMER" -> category == MarketItemTag.CROP;
+			case "HUNTER" -> category == MarketItemTag.MOB;
 			default -> false;
 		};
 	}
-
-	private ItemCategory getCategory(Material material) {
-		if (material == null) {
-			return ItemCategory.INFRA;
-		}
-		String name = material.name();
-		if (name.contains("ORE") || name.contains("INGOT") || name.contains("RAW_") || name.contains("NUGGET")
-			|| name.contains("DIAMOND") || name.contains("EMERALD") || name.contains("AMETHYST")) {
-			return ItemCategory.ORE;
-		}
-		if (CROP_ITEMS.contains(material)) {
-			return ItemCategory.CROP;
-		}
-		if (MOB_ITEMS.contains(material)) {
-			return ItemCategory.MOB;
-		}
-		return ItemCategory.INFRA;
-	}
-
-	private enum ItemCategory {
-		ORE,
-		CROP,
-		MOB,
-		INFRA
-	}
-
-	private static final Set<Material> CROP_ITEMS = EnumSet.of(
-		Material.WHEAT,
-		Material.CARROT,
-		Material.POTATO,
-		Material.BEETROOT,
-		Material.BEETROOT_SEEDS,
-		Material.MELON_SLICE,
-		Material.PUMPKIN,
-		Material.SUGAR_CANE,
-		Material.BAMBOO,
-		Material.COCOA_BEANS,
-		Material.NETHER_WART,
-		Material.SWEET_BERRIES
-	);
-
-	private static final Set<Material> MOB_ITEMS = EnumSet.of(
-		Material.BEEF,
-		Material.PORKCHOP,
-		Material.CHICKEN,
-		Material.MUTTON,
-		Material.RABBIT,
-		Material.COD,
-		Material.SALMON,
-		Material.TROPICAL_FISH,
-		Material.PUFFERFISH,
-		Material.ROTTEN_FLESH,
-		Material.BONE,
-		Material.STRING,
-		Material.SPIDER_EYE,
-		Material.GUNPOWDER,
-		Material.ENDER_PEARL
-	);
 }

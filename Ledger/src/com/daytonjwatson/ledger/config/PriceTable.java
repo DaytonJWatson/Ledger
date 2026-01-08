@@ -29,7 +29,10 @@ public class PriceTable {
 			double minFactor = entrySection.getDouble("minFactor", 0.2);
 			double maxFactor = entrySection.getDouble("maxFactor", 2.5);
 			double sigma = entrySection.getDouble("sigma", 1.0);
-			entries.put(key.toUpperCase(), new PriceEntry(base, cap, minFactor, maxFactor, sigma));
+			double baseline = entrySection.getDouble("baseline", 0.0);
+			double rho = entrySection.getDouble("rho", 0.0);
+			boolean infra = entrySection.getBoolean("infra", false);
+			entries.put(key.toUpperCase(), new PriceEntry(base, cap, minFactor, maxFactor, sigma, baseline, rho, infra));
 		}
 	}
 
@@ -50,13 +53,20 @@ public class PriceTable {
 		private final double minFactor;
 		private final double maxFactor;
 		private final double sigma;
+		private final double baseline;
+		private final double rho;
+		private final boolean infra;
 
-		public PriceEntry(double base, double cap, double minFactor, double maxFactor, double sigma) {
+		public PriceEntry(double base, double cap, double minFactor, double maxFactor, double sigma,
+						  double baseline, double rho, boolean infra) {
 			this.base = base;
 			this.cap = cap;
 			this.minFactor = minFactor;
 			this.maxFactor = maxFactor;
 			this.sigma = sigma;
+			this.baseline = baseline;
+			this.rho = rho;
+			this.infra = infra;
 		}
 
 		public double getBase() {
@@ -77,6 +87,18 @@ public class PriceTable {
 
 		public double getSigma() {
 			return sigma;
+		}
+
+		public double getBaseline() {
+			return baseline;
+		}
+
+		public double getRho() {
+			return rho;
+		}
+
+		public boolean isInfra() {
+			return infra;
 		}
 	}
 }
