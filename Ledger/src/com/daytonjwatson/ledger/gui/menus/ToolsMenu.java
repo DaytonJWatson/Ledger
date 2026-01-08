@@ -187,7 +187,7 @@ public class ToolsMenu implements LedgerMenu {
 		List<String> lore = new ArrayList<>();
 		if (selected) {
 			lore.add(ChatColor.GREEN + "Selected");
-			item.addUnsafeEnchantment(Enchantment.ARROW_INFINITE, 1);
+			item.addUnsafeEnchantment(Enchantment.INFINITY, 1);
 			meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 		} else {
 			lore.add(ChatColor.YELLOW + "Click to view");
