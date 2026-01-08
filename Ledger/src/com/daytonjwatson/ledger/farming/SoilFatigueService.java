@@ -113,8 +113,9 @@ public class SoilFatigueService {
 		if (meta == null) {
 			return;
 		}
+		double normalizedMultiplier = normalizeMultiplier(multiplier);
 		PersistentDataContainer container = meta.getPersistentDataContainer();
-		container.set(fatigueKey, PersistentDataType.DOUBLE, multiplier);
+		container.set(fatigueKey, PersistentDataType.DOUBLE, normalizedMultiplier);
 		item.setItemMeta(meta);
 	}
 
@@ -164,6 +165,16 @@ public class SoilFatigueService {
 	private double toMultiplier(double fatigue) {
 		double minMultiplier = clamp(configManager.getConfig().getDouble("farming.fatigue.minMultiplier", 0.25), 0.0, 1.0);
 		return clamp(1.0 - fatigue, minMultiplier, 1.0);
+	}
+
+	private double normalizeMultiplier(double multiplier) {
+		double step = configManager.getConfig().getDouble("farming.fatigue.stackStep", 0.05);
+		if (step <= 0.0) {
+			return multiplier;
+		}
+		double normalized = Math.round(multiplier / step) * step;
+		normalized = clamp(normalized, 0.0, 1.0);
+		return Math.round(normalized * 1000.0) / 1000.0;
 	}
 
 	private double clamp(double value, double min, double max) {
