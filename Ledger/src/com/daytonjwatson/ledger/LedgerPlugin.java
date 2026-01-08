@@ -12,10 +12,10 @@ import com.daytonjwatson.ledger.gui.GuiManager;
 import com.daytonjwatson.ledger.gui.MenuId;
 import com.daytonjwatson.ledger.gui.menus.BankMenu;
 import com.daytonjwatson.ledger.gui.menus.HubMenu;
-import com.daytonjwatson.ledger.gui.menus.PlaceholderMenu;
 import com.daytonjwatson.ledger.gui.menus.RepairMenu;
 import com.daytonjwatson.ledger.gui.menus.SellMenu;
 import com.daytonjwatson.ledger.gui.menus.ToolsMenu;
+import com.daytonjwatson.ledger.gui.menus.UpgradesMenu;
 import com.daytonjwatson.ledger.items.InventoryScanScheduler;
 import com.daytonjwatson.ledger.items.LoreValueService;
 import com.daytonjwatson.ledger.market.DepletionListener;
@@ -99,7 +99,7 @@ public class LedgerPlugin extends JavaPlugin {
 		guiManager.register(new BankMenu(guiManager, moneyService, bankService, spawnRegionService));
 		guiManager.register(new ToolsMenu(guiManager, moneyService, toolVendorService, spawnRegionService));
 		guiManager.register(new RepairMenu(guiManager, moneyService, repairService, toolMetaService, toolVendorService));
-		guiManager.register(new PlaceholderMenu(MenuId.UPGRADES, "Upgrades"));
+		guiManager.register(new UpgradesMenu(guiManager, upgradeService, moneyService));
 
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService, guiManager, configManager), this);
 		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
