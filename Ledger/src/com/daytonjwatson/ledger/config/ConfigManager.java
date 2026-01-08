@@ -80,6 +80,7 @@ public class ConfigManager {
 		yaml.set("farming.fatigue.perHarvest", 0.12);
 		yaml.set("farming.fatigue.recoveryPerDay", 0.18);
 		yaml.set("farming.fatigue.minMultiplier", 0.25);
+		yaml.set("farming.fatigue.stackStep", 0.05);
 		yaml.set("farming.fatigue.pruneDays", 14.0);
 		writeYaml(file, yaml);
 	}
