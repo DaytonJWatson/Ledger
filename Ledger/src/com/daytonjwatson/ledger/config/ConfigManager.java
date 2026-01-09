@@ -65,6 +65,10 @@ public class ConfigManager {
 		this.prices = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "prices.yml"));
 	}
 
+	public void reloadUpgrades() {
+		this.upgrades = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "upgrades.yml"));
+	}
+
 	private YamlConfiguration loadOrCreate(File file, DefaultWriter writer) {
 		if (!file.exists()) {
 			try {
@@ -245,11 +249,11 @@ public class ConfigManager {
 		createCurveUpgrade(upgradesSection, "logistics", "Logistics", 5, 900, 1.55,
 			"Earn bonuses for selling diverse batches of items.");
 
-		createChoiceUpgrade(upgradesSection, "spec_choice_miner", "Specialization: Miner", 2000,
+		createChoiceUpgrade(upgradesSection, "spec_miner_choice", "Specialization: Miner", 2000,
 			"MINER", "Choose the Miner specialization.");
-		createChoiceUpgrade(upgradesSection, "spec_choice_farmer", "Specialization: Farmer", 2000,
+		createChoiceUpgrade(upgradesSection, "spec_farmer_choice", "Specialization: Farmer", 2000,
 			"FARMER", "Choose the Farmer specialization.");
-		createChoiceUpgrade(upgradesSection, "spec_choice_hunter", "Specialization: Hunter", 2000,
+		createChoiceUpgrade(upgradesSection, "spec_hunter_choice", "Specialization: Hunter", 2000,
 			"HUNTER", "Choose the Hunter specialization.");
 
 		createSpecializationUpgrade(upgradesSection, "spec_miner", "Miner Mastery", 10, 500, 1.45, "MINER",
@@ -259,12 +263,12 @@ public class ConfigManager {
 		createSpecializationUpgrade(upgradesSection, "spec_hunter", "Hunter Mastery", 10, 500, 1.45, "HUNTER",
 			"Boost mob drop sales when specialized as a Hunter.");
 
-		createVendorUnlock(upgradesSection, "vendor_iron", "Vendor Tier: Iron", 5000, 1,
+		createVendorUnlock(upgradesSection, "vendor_t2_iron", "Vendor Tier: Iron", 5000, 2,
 			"Unlock iron tool purchases.");
-		createVendorUnlock(upgradesSection, "vendor_diamond", "Vendor Tier: Diamond", 15000, 2,
-			"Unlock diamond tool purchases.", "vendor_iron");
-		createVendorUnlock(upgradesSection, "vendor_netherite", "Vendor Tier: Netherite", 35000, 3,
-			"Unlock netherite tool purchases.", "vendor_diamond");
+		createVendorUnlock(upgradesSection, "vendor_t3_diamond", "Vendor Tier: Diamond", 15000, 3,
+			"Unlock diamond tool purchases.", "vendor_t2_iron");
+		createVendorUnlock(upgradesSection, "vendor_t4_netherite", "Vendor Tier: Netherite", 35000, 4,
+			"Unlock netherite tool purchases.", "vendor_t3_diamond");
 
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_1", "Refinement: Autosmelt I", 4000, 1);
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_2", "Refinement: Autosmelt II", 6500, 2, "refine_autosmelt_1");
@@ -333,8 +337,11 @@ public class ConfigManager {
 	private void createVendorUnlock(ConfigurationSection root, String id, String name, long cost, int tier, String description, String... requires) {
 		ConfigurationSection section = root.createSection(id);
 		section.set("name", name);
-		section.set("type", "UNLOCK");
-		section.set("cost", cost);
+		section.set("type", "LEVEL");
+		section.set("maxLevel", 1);
+		ConfigurationSection costSection = section.createSection("cost");
+		costSection.set("c0", cost);
+		costSection.set("g", 1.0);
 		section.set("unlocksVendorTier", tier);
 		section.set("description", description);
 		if (requires.length > 0) {
@@ -345,10 +352,13 @@ public class ConfigManager {
 	private void createRefinementUnlock(ConfigurationSection root, String id, String name, long cost, int level, String... requires) {
 		ConfigurationSection section = root.createSection(id);
 		section.set("name", name);
-		section.set("type", "UNLOCK");
-		section.set("cost", cost);
+		section.set("type", "LEVEL");
+		section.set("maxLevel", 1);
+		ConfigurationSection costSection = section.createSection("cost");
+		costSection.set("c0", cost);
+		costSection.set("g", 1.0);
 		section.set("refinementLevel", level);
-		section.set("description", "Unlock autosmelt level " + level + " (not implemented yet).");
+		section.set("description", "Unlock autosmelt level " + level + ".");
 		if (requires.length > 0) {
 			section.set("requires", requires);
 		}

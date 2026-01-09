@@ -25,7 +25,7 @@ public class SellService {
 
 	public SellOutcome sellInventory(Player player) {
 		ItemStack[] items = player.getInventory().getContents();
-		Map<Material, Integer> sellableCounts = new HashMap<>();
+		Map<String, Integer> sellableCounts = new HashMap<>();
 		for (ItemStack item : items) {
 			if (item == null || item.getType() == Material.AIR) {
 				continue;
@@ -36,7 +36,7 @@ public class SellService {
 			if (marketService.getSellPrice(item) <= 0.0) {
 				continue;
 			}
-			sellableCounts.merge(item.getType(), item.getAmount(), Integer::sum);
+			sellableCounts.merge(ItemKeyUtil.toKey(item.getType()), item.getAmount(), Integer::sum);
 		}
 		int distinctTypes = sellableCounts.size();
 		long total = 0;
@@ -49,7 +49,7 @@ public class SellService {
 			if (!sellValidator.validate(item).sellable()) {
 				continue;
 			}
-			double value = marketService.getSellPrice(player, item, distinctTypes);
+			double value = marketService.getSellPriceForInventory(player, item, distinctTypes);
 			if (value <= 0.0) {
 				continue;
 			}
@@ -67,7 +67,7 @@ public class SellService {
 	}
 
 	public SellOutcome sellInventory(Player player, Inventory inventory, Set<Integer> slots) {
-		Map<Material, Integer> sellableCounts = new HashMap<>();
+		Map<String, Integer> sellableCounts = new HashMap<>();
 		for (int slot : slots) {
 			ItemStack item = inventory.getItem(slot);
 			if (item == null || item.getType() == Material.AIR) {
@@ -79,7 +79,7 @@ public class SellService {
 			if (marketService.getSellPrice(item) <= 0.0) {
 				continue;
 			}
-			sellableCounts.merge(item.getType(), item.getAmount(), Integer::sum);
+			sellableCounts.merge(ItemKeyUtil.toKey(item.getType()), item.getAmount(), Integer::sum);
 		}
 		int distinctTypes = sellableCounts.size();
 		long total = 0;
@@ -92,7 +92,7 @@ public class SellService {
 			if (!sellValidator.validate(item).sellable()) {
 				continue;
 			}
-			double value = marketService.getSellPrice(player, item, distinctTypes);
+			double value = marketService.getSellPriceForInventory(player, item, distinctTypes);
 			if (value <= 0.0) {
 				continue;
 			}

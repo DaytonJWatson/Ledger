@@ -288,6 +288,10 @@ public class ToolsMenu implements LedgerMenu {
 		long price = toolVendorService.getBuyPrice(spec);
 		lore.add(ChatColor.GRAY + "Price: " + ChatColor.GOLD + "$" + formatMoney(price));
 		lore.add(ChatColor.GRAY + "Tier requirement: " + (unlocked ? ChatColor.GREEN + "Unlocked" : ChatColor.RED + "Locked"));
+		int requiredTier = getVendorRequirementTier(spec.getTier());
+		if (requiredTier > 0) {
+			lore.add(ChatColor.GRAY + "Requires vendor tier: " + (unlocked ? ChatColor.GREEN : ChatColor.RED) + requiredTier);
+		}
 		lore.add(ChatColor.GRAY + "Variant: " + ChatColor.YELLOW + getVariantText(spec));
 		lore.add(ChatColor.DARK_GRAY + "Purchased with BANKED money");
 		lore.add(ChatColor.RED + "Spawn only");
@@ -328,7 +332,9 @@ public class ToolsMenu implements LedgerMenu {
 				continue;
 			}
 			boolean unlocked = toolVendorService.isTierUnlocked(player, tier);
-			lore.add(ChatColor.GRAY + formatTier(tier) + ": " + (unlocked ? ChatColor.GREEN + "Unlocked" : ChatColor.RED + "Locked"));
+			int requiredTier = getVendorRequirementTier(tier);
+			String status = unlocked ? ChatColor.GREEN + "Unlocked" : ChatColor.RED + "Locked";
+			lore.add(ChatColor.GRAY + formatTier(tier) + ": " + status + " (Tier " + requiredTier + ")");
 		}
 		meta.setLore(lore);
 		item.setItemMeta(meta);
@@ -384,6 +390,15 @@ public class ToolsMenu implements LedgerMenu {
 			case IRON -> "Iron";
 			case DIAMOND -> "Diamond";
 			case NETHERITE -> "Netherite";
+		};
+	}
+
+	private int getVendorRequirementTier(ToolTier tier) {
+		return switch (tier) {
+			case IRON -> 2;
+			case DIAMOND -> 3;
+			case NETHERITE -> 4;
+			default -> 0;
 		};
 	}
 
