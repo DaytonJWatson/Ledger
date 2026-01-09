@@ -242,11 +242,8 @@ public class ToolsMenu implements LedgerMenu {
 			}
 			return offers;
 		}
-		ToolVariant[] variants = {ToolVariant.STANDARD, ToolVariant.EFFICIENCY, ToolVariant.SILK_TOUCH};
 		for (ToolTier tier : ToolTier.values()) {
-			for (ToolVariant variant : variants) {
-				offers.add(Offer.tool(new ToolSpec(category.getToolType(), tier, variant)));
-			}
+			offers.add(Offer.tool(new ToolSpec(category.getToolType(), tier, ToolVariant.STANDARD)));
 		}
 		return offers;
 	}
