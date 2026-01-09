@@ -27,9 +27,12 @@ public class PriceGenerator {
 	private static final Logger LOGGER = Logger.getLogger(PriceGenerator.class.getName());
 	private static final double MIN_MULTIPLIER = 0.05;
 	private static final double MAX_MULTIPLIER = 50.0;
-	private static final double NUGGET_MULTIPLIER = 0.13;
+	private static final double INGOT_MULTIPLIER = 1.20;
+	private static final double NUGGET_INEFFICIENCY = 0.98;
+	private static final double NUGGET_MULTIPLIER = (INGOT_MULTIPLIER / 9.0) * NUGGET_INEFFICIENCY;
 	private static final double STORAGE_BLOCK_MULTIPLIER = 9.0;
 	private static final double HONEY_BLOCK_MULTIPLIER = 4.0;
+	private static final double QUARTZ_BLOCK_MULTIPLIER = 4.0;
 	private static final EnumSet<Material> ORE_BLOCKS = EnumSet.of(
 		Material.COAL_ORE,
 		Material.COPPER_ORE,
@@ -62,6 +65,23 @@ public class PriceGenerator {
 		Material.RAW_GOLD_BLOCK,
 		Material.RAW_COPPER_BLOCK
 	);
+	private static final EnumSet<Material> FORCED_NINE_X = EnumSet.of(
+		Material.IRON_BLOCK,
+		Material.GOLD_BLOCK,
+		Material.COPPER_BLOCK,
+		Material.NETHERITE_BLOCK,
+		Material.DIAMOND_BLOCK,
+		Material.EMERALD_BLOCK,
+		Material.REDSTONE_BLOCK,
+		Material.LAPIS_BLOCK,
+		Material.RAW_IRON_BLOCK,
+		Material.RAW_GOLD_BLOCK,
+		Material.RAW_COPPER_BLOCK,
+		Material.COAL_BLOCK
+	);
+	private static final EnumSet<Material> FORCED_FOUR_X = EnumSet.of(
+		Material.QUARTZ_BLOCK
+	);
 	private static final EnumSet<Material> INGOTS = EnumSet.of(
 		Material.IRON_INGOT,
 		Material.GOLD_INGOT,
@@ -88,6 +108,29 @@ public class PriceGenerator {
 		Material.COAL_BLOCK,
 		Material.LAPIS_BLOCK,
 		Material.REDSTONE_BLOCK
+	);
+	private static final EnumSet<Material> SEEDS = EnumSet.of(
+		Material.WHEAT_SEEDS,
+		Material.BEETROOT_SEEDS,
+		Material.PUMPKIN_SEEDS,
+		Material.MELON_SEEDS
+	);
+	private static final EnumSet<Material> SAPLINGS = EnumSet.of(
+		Material.OAK_SAPLING,
+		Material.SPRUCE_SAPLING,
+		Material.BIRCH_SAPLING,
+		Material.JUNGLE_SAPLING,
+		Material.ACACIA_SAPLING,
+		Material.DARK_OAK_SAPLING,
+		Material.MANGROVE_PROPAGULE,
+		Material.CHERRY_SAPLING,
+		Material.AZALEA,
+		Material.FLOWERING_AZALEA,
+		Material.CRIMSON_FUNGUS,
+		Material.WARPED_FUNGUS
+	);
+	private static final EnumSet<Material> NETHER_WART = EnumSet.of(
+		Material.NETHER_WART
 	);
 	private static final EnumSet<Material> CROPS = EnumSet.of(
 		Material.WHEAT,
@@ -205,25 +248,33 @@ public class PriceGenerator {
 		Material.PRISMARINE_BRICKS,
 		Material.DARK_PRISMARINE
 	);
-	private static final EnumSet<Material> REDSTONE_COMPONENTS = EnumSet.of(
+	private static final EnumSet<Material> REDSTONE_SIMPLE = EnumSet.of(
 		Material.REDSTONE,
+		Material.TORCH,
+		Material.SOUL_TORCH,
+		Material.LEVER,
+		Material.TRIPWIRE_HOOK
+	);
+	private static final EnumSet<Material> REDSTONE_LOGIC = EnumSet.of(
 		Material.REPEATER,
-		Material.COMPARATOR,
+		Material.COMPARATOR
+	);
+	private static final EnumSet<Material> REDSTONE_MECH = EnumSet.of(
 		Material.PISTON,
 		Material.STICKY_PISTON,
 		Material.OBSERVER,
-		Material.DROPPER,
 		Material.DISPENSER,
-		Material.HOPPER,
+		Material.DROPPER,
 		Material.RAIL,
 		Material.POWERED_RAIL,
-		Material.DETECTOR_RAIL,
-		Material.LANTERN,
-		Material.SOUL_LANTERN,
-		Material.TORCH,
-		Material.SOUL_TORCH,
+		Material.DETECTOR_RAIL
+	);
+	private static final EnumSet<Material> REDSTONE_HEAVY = EnumSet.of(
+		Material.HOPPER,
+		Material.JUKEBOX,
 		Material.NOTE_BLOCK,
-		Material.JUKEBOX
+		Material.DAYLIGHT_DETECTOR,
+		Material.TARGET
 	);
 	private static final EnumSet<Material> CONTAINERS_AND_UTILITIES = EnumSet.of(
 		Material.CHEST,
@@ -295,8 +346,9 @@ public class PriceGenerator {
 			if (debugProcessing) {
 				LOGGER.info(() -> "PriceGen material=" + material.name()
 					+ " tag=" + tag.name()
-					+ " base=" + preMultiplierBase
+					+ " bandBaseBefore=" + preMultiplierBase
 					+ " multiplier=" + processing.multiplier()
+					+ " bandCappedMultiplier=" + processing.bandCappedMultiplier()
 					+ " final=" + base
 					+ " reason=" + processing.reason());
 			}
@@ -388,7 +440,11 @@ public class PriceGenerator {
 				multiplier = maxMultiplier(multiplier, 1.00, reasons, "raw_ore");
 			}
 			if (isIngot(material)) {
-				double ingotMultiplier = material == Material.NETHERITE_INGOT ? 1.35 : 1.20;
+				double ingotMultiplier = material == Material.NETHERITE_INGOT ? 1.35 : INGOT_MULTIPLIER;
+				if (material == Material.IRON_INGOT || material == Material.GOLD_INGOT || material == Material.COPPER_INGOT) {
+					ingotMultiplier = Math.min(Math.max(ingotMultiplier, 1.00), 1.50);
+					reasons.add("ingot_ratio");
+				}
 				multiplier = maxMultiplier(multiplier, ingotMultiplier, reasons, "ingot");
 			}
 			if (isGem(material)) {
@@ -402,22 +458,25 @@ public class PriceGenerator {
 			multiplier = maxMultiplier(multiplier, redstoneMultiplier(material, reasons), reasons, null);
 			multiplier = maxMultiplier(multiplier, toolArmorMultiplier(material, reasons), reasons, null);
 			multiplier = maxMultiplier(multiplier, containerMultiplier(material, reasons), reasons, null);
+			multiplier = applyWoodCaps(material, multiplier, reasons);
 		}
 
 		double bandMax = bandMaxMultiplier(tag);
+		double bandCappedMultiplier = multiplier;
 		if (multiplier > bandMax) {
+			bandCappedMultiplier = bandMax;
 			multiplier = bandMax;
-			reasons.add("band_cap");
+			reasons.add("cap:band");
 		}
 		if (multiplier < MIN_MULTIPLIER) {
 			multiplier = MIN_MULTIPLIER;
-			reasons.add("hard_floor");
+			reasons.add("cap:floor");
 		} else if (multiplier > MAX_MULTIPLIER) {
 			multiplier = MAX_MULTIPLIER;
-			reasons.add("hard_cap");
+			reasons.add("cap:hard");
 		}
 
-		return new ProcessingResult(multiplier, String.join(", ", reasons));
+		return new ProcessingResult(bandCappedMultiplier, multiplier, String.join(", ", reasons));
 	}
 
 	private String processingMultiplierReason(Material material) {
@@ -426,22 +485,38 @@ public class PriceGenerator {
 	}
 
 	private Double forcedMultiplier(Material material, List<String> reasons) {
-		if (isStorageBlock(material) || isRawStorageBlock(material)) {
-			reasons.add("storage_block");
+		if (FORCED_NINE_X.contains(material)) {
+			reasons.add("forced:9x_block");
 			return STORAGE_BLOCK_MULTIPLIER;
 		}
+		if (FORCED_FOUR_X.contains(material)) {
+			reasons.add("forced:4x_block");
+			return QUARTZ_BLOCK_MULTIPLIER;
+		}
 		if (isNugget(material)) {
-			reasons.add("nugget");
+			reasons.add("forced:nugget_ratio");
 			return NUGGET_MULTIPLIER;
 		}
 		if (material == Material.HONEY_BLOCK || material == Material.HONEYCOMB_BLOCK) {
-			reasons.add("honey_block");
+			reasons.add("forced:honey_block");
 			return HONEY_BLOCK_MULTIPLIER;
 		}
 		return null;
 	}
 
 	private double cropMultiplier(Material material, List<String> reasons) {
+		if (SEEDS.contains(material)) {
+			reasons.add("byproduct:seed");
+			return 0.65;
+		}
+		if (SAPLINGS.contains(material)) {
+			reasons.add("byproduct:sapling");
+			return 0.75;
+		}
+		if (NETHER_WART.contains(material)) {
+			reasons.add("crop:nether_wart");
+			return 1.00;
+		}
 		if (CROPS.contains(material)) {
 			reasons.add("crop");
 			return 1.00;
@@ -511,6 +586,23 @@ public class PriceGenerator {
 		return 1.0;
 	}
 
+	private double applyWoodCaps(Material material, double multiplier, List<String> reasons) {
+		double capped = multiplier;
+		if (isPlanks(material) && capped > 1.12) {
+			capped = 1.12;
+			reasons.add("cap:planks");
+		}
+		if (material == Material.STICK && capped > 1.10) {
+			capped = 1.10;
+			reasons.add("cap:stick");
+		}
+		if (isWoodFamily(material) && !isLogOrWood(material) && capped > 1.35) {
+			capped = 1.35;
+			reasons.add("cap:wood_family");
+		}
+		return capped;
+	}
+
 	private double buildingMultiplier(Material material, List<String> reasons) {
 		double familyMultiplier = 1.0;
 		double shapeMultiplier = 1.0;
@@ -525,6 +617,14 @@ public class PriceGenerator {
 		if (isNetherBricks(material)) {
 			familyMultiplier = material == Material.NETHER_BRICKS ? 1.12 : 1.15;
 			reasons.add("nether_bricks");
+		}
+		if (isPurpurVariant(material)) {
+			familyMultiplier = Math.max(familyMultiplier, 1.15);
+			reasons.add("purpur");
+		}
+		if (isQuartzVariant(material)) {
+			familyMultiplier = Math.max(familyMultiplier, 1.12);
+			reasons.add("quartz_decor");
 		}
 		if (isChiseledOrCracked(material)) {
 			familyMultiplier = Math.max(familyMultiplier, 1.18);
@@ -543,6 +643,10 @@ public class PriceGenerator {
 			reasons.add("polished");
 		}
 		if (isCutSandstone(material)) {
+			familyMultiplier = Math.max(familyMultiplier, 1.12);
+			reasons.add("cut");
+		}
+		if (isCutVariant(material)) {
 			familyMultiplier = Math.max(familyMultiplier, 1.12);
 			reasons.add("cut");
 		}
@@ -592,26 +696,27 @@ public class PriceGenerator {
 	}
 
 	private double redstoneMultiplier(Material material, List<String> reasons) {
-		if (!REDSTONE_COMPONENTS.contains(material)) {
-			return 1.0;
+		if (material == Material.REDSTONE) {
+			reasons.add("device:redstone_base");
+			return 1.00;
 		}
-		double value = switch (material) {
-			case REDSTONE -> 1.00;
-			case REPEATER, COMPARATOR -> 1.30;
-			case PISTON, STICKY_PISTON -> 1.28;
-			case OBSERVER, DROPPER, DISPENSER -> 1.30;
-			case HOPPER -> 1.40;
-			case RAIL -> 1.25;
-			case POWERED_RAIL, DETECTOR_RAIL -> 1.35;
-			case LANTERN, SOUL_LANTERN -> 1.18;
-			case TORCH -> 1.10;
-			case SOUL_TORCH -> 1.12;
-			case NOTE_BLOCK -> 1.25;
-			case JUKEBOX -> 1.35;
-			default -> 1.25;
-		};
-		reasons.add("redstone");
-		return value;
+		if (REDSTONE_SIMPLE.contains(material) || isButton(material) || isPressurePlate(material)) {
+			reasons.add("device:redstone_simple");
+			return 1.10;
+		}
+		if (REDSTONE_LOGIC.contains(material)) {
+			reasons.add("device:redstone_logic");
+			return 1.30;
+		}
+		if (REDSTONE_MECH.contains(material)) {
+			reasons.add("device:redstone_mech");
+			return 1.30;
+		}
+		if (REDSTONE_HEAVY.contains(material)) {
+			reasons.add("device:redstone_heavy");
+			return 1.40;
+		}
+		return 1.0;
 	}
 
 	private double toolArmorMultiplier(Material material, List<String> reasons) {
@@ -686,7 +791,7 @@ public class PriceGenerator {
 
 	private boolean isWoodFamily(Material material) {
 		String name = material.name();
-		if (name.startsWith("STRIPPED_")) {
+		if (isStripped(material)) {
 			name = name.substring("STRIPPED_".length());
 		}
 		for (String prefix : WOOD_PREFIXES) {
@@ -695,6 +800,19 @@ public class PriceGenerator {
 			}
 		}
 		return false;
+	}
+
+	private boolean isPlanks(Material material) {
+		return material.name().endsWith("_PLANKS");
+	}
+
+	private boolean isLogOrWood(Material material) {
+		String name = material.name();
+		return name.endsWith("_LOG") || name.endsWith("_WOOD");
+	}
+
+	private boolean isStripped(Material material) {
+		return material.name().startsWith("STRIPPED_");
 	}
 
 	private boolean isWoodBasicShape(Material material) {
@@ -739,6 +857,10 @@ public class PriceGenerator {
 		return material == Material.CUT_SANDSTONE || material == Material.CUT_RED_SANDSTONE;
 	}
 
+	private boolean isCutVariant(Material material) {
+		return material.name().startsWith("CUT_");
+	}
+
 	private boolean isBrickOrTile(Material material) {
 		String name = material.name();
 		return name.endsWith("_BRICKS") || name.endsWith("_TILES");
@@ -751,6 +873,15 @@ public class PriceGenerator {
 
 	private boolean isFancyMossyVariant(Material material) {
 		return material.name().startsWith("MOSSY_");
+	}
+
+	private boolean isPurpurVariant(Material material) {
+		return material.name().startsWith("PURPUR_");
+	}
+
+	private boolean isQuartzVariant(Material material) {
+		String name = material.name();
+		return name.startsWith("QUARTZ_") && material != Material.QUARTZ_BLOCK;
 	}
 
 	private boolean isPrismarine(Material material) {
@@ -793,6 +924,14 @@ public class PriceGenerator {
 		return material.name().endsWith("_DYE");
 	}
 
+	private boolean isButton(Material material) {
+		return material.name().endsWith("_BUTTON");
+	}
+
+	private boolean isPressurePlate(Material material) {
+		return material.name().endsWith("_PRESSURE_PLATE");
+	}
+
 	private boolean isTool(Material material) {
 		String name = material.name();
 		return name.endsWith("_PICKAXE")
@@ -816,7 +955,7 @@ public class PriceGenerator {
 			|| material == Material.TRIDENT;
 	}
 
-	private record ProcessingResult(double multiplier, String reason) {
+	private record ProcessingResult(double bandCappedMultiplier, double multiplier, String reason) {
 	}
 
 	public static class PriceSummary {
