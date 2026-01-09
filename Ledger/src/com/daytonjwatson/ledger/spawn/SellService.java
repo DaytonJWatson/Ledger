@@ -4,8 +4,10 @@ import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.market.MarketService;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 public class SellService {
@@ -47,6 +49,42 @@ public class SellService {
 			items[i] = null;
 		}
 		player.getInventory().setContents(items);
+		if (total <= 0) {
+			return SellOutcome.noSellable();
+		}
+		moneyService.addCarried(player, total);
+		return SellOutcome.sold(total, soldCount);
+	}
+
+	public SellOutcome sellInventory(Player player, Inventory inventory, Set<Integer> slots) {
+		Map<Material, Integer> sellableCounts = new HashMap<>();
+		for (int slot : slots) {
+			ItemStack item = inventory.getItem(slot);
+			if (item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			if (marketService.getSellPrice(item) <= 0.0) {
+				continue;
+			}
+			sellableCounts.merge(item.getType(), item.getAmount(), Integer::sum);
+		}
+		int distinctTypes = sellableCounts.size();
+		long total = 0;
+		int soldCount = 0;
+		for (int slot : slots) {
+			ItemStack item = inventory.getItem(slot);
+			if (item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			double value = marketService.getSellPrice(player, item, distinctTypes);
+			if (value <= 0.0) {
+				continue;
+			}
+			total += Math.round(value * item.getAmount());
+			soldCount += item.getAmount();
+			marketService.applySale(item.getType().name(), item.getAmount());
+			inventory.setItem(slot, null);
+		}
 		if (total <= 0) {
 			return SellOutcome.noSellable();
 		}
