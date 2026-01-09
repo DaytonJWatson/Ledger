@@ -55,6 +55,13 @@ public class ConfigManager {
 		return spawn;
 	}
 
+	public boolean isPriceGenerationDebugEnabled() {
+		if (config == null) {
+			return false;
+		}
+		return config.getBoolean("prices.generator.processingDebug", false);
+	}
+
 	public File getDataFolder() {
 		return plugin.getDataFolder();
 	}
@@ -94,6 +101,7 @@ public class ConfigManager {
 		yaml.set("market.windows.rainMultiplier", 1.20);
 		yaml.set("market.windows.depthMultiplier", 1.30);
 		yaml.set("market.windows.depthY", 32);
+		yaml.set("prices.generator.processingDebug", false);
 		yaml.set("tools.globalBase", 8000.0);
 		yaml.set("tools.repairCap", 0.60);
 		yaml.set("tools.repairCountFactor", 0.04);
@@ -114,7 +122,8 @@ public class ConfigManager {
 	private void writeDefaultPrices(File file) throws IOException {
 		YamlConfiguration bands = this.priceBands == null ? buildDefaultPriceBands() : this.priceBands;
 		PriceBandTable bandTable = new PriceBandTable(bands);
-		PriceGenerator generator = new PriceGenerator(new com.daytonjwatson.ledger.market.ItemTagService(), bandTable);
+		PriceGenerator generator = new PriceGenerator(new com.daytonjwatson.ledger.market.ItemTagService(), bandTable,
+			isPriceGenerationDebugEnabled());
 		YamlConfiguration yaml = generator.generate();
 		ConfigurationSection mobsSection = yaml.createSection("mobPrices");
 		createPrice(mobsSection, "entity:ZOMBIE", 12.0, 5000, 0.0, 0.0, false);
@@ -219,9 +228,6 @@ public class ConfigManager {
 		writeOverride(overridesSection, "KELP", 0.05, false);
 		writeOverride(overridesSection, "SUGAR_CANE", 0.05, false);
 		writeOverride(overridesSection, "CACTUS", 0.05, false);
-		ConfigurationSection ironOverride = overridesSection.createSection("IRON_INGOT");
-		ironOverride.set("base", 1.5);
-		ironOverride.set("cap", 15000.0);
 		ConfigurationSection debrisOverride = overridesSection.createSection("ANCIENT_DEBRIS");
 		debrisOverride.set("base", 120.0);
 		debrisOverride.set("cap", 80.0);
