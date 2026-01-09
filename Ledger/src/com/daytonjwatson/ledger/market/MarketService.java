@@ -140,12 +140,6 @@ public class MarketService {
 		}
 		MarketSnapshot snapshot = snapshotMarketState(quantities.keySet());
 		try {
-			for (Map.Entry<Material, Integer> entry : quantities.entrySet()) {
-				if (entry.getKey() == null || entry.getValue() == null) {
-					continue;
-				}
-				applySale(ItemKeyUtil.toKey(entry.getKey()), entry.getValue());
-			}
 			long total = 0L;
 			for (ItemStack item : items) {
 				if (item == null || item.getType() == Material.AIR) {
@@ -156,6 +150,7 @@ public class MarketService {
 					continue;
 				}
 				total += Math.round(price * item.getAmount());
+				applySale(ItemKeyUtil.toKey(item.getType()), item.getAmount());
 			}
 			return total;
 		} finally {
