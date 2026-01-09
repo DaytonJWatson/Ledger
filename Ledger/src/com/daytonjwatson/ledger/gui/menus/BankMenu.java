@@ -41,11 +41,11 @@ public class BankMenu implements LedgerMenu {
 	@Override
 	public Inventory build(Player player) {
 		Inventory inventory = Bukkit.createInventory(new LedgerHolder(id()), MENU_SIZE, GuiManager.MENU_TITLE_PREFIX + "Bank");
-		inventory.setItem(11, createBalanceItem(Material.GOLD_INGOT, ChatColor.YELLOW + "Carried Balance", moneyService.getCarried(player.getUniqueId())));
-		inventory.setItem(15, createBalanceItem(Material.EMERALD, ChatColor.YELLOW + "Banked Balance", moneyService.getBanked(player.getUniqueId())));
+		inventory.setItem(3, createBalanceItem(Material.GOLD_INGOT, ChatColor.YELLOW + "Carried Balance", moneyService.getCarried(player.getUniqueId())));
+		inventory.setItem(5, createBalanceItem(Material.EMERALD, ChatColor.YELLOW + "Banked Balance", moneyService.getBanked(player.getUniqueId())));
 		inventory.setItem(12, createDepositButton(Material.LIME_DYE, ChatColor.GREEN + "Deposit 25%", "Deposit 25% of your carried money"));
-		inventory.setItem(13, createDepositButton(Material.EMERALD_BLOCK, ChatColor.GREEN + "Deposit All", "Deposit all carried money"));
-		inventory.setItem(14, createDepositButton(Material.GREEN_DYE, ChatColor.GREEN + "Deposit 50%", "Deposit 50% of your carried money"));
+		inventory.setItem(13, createDepositButton(Material.GREEN_DYE, ChatColor.GREEN + "Deposit 50%", "Deposit 50% of your carried money"));
+		inventory.setItem(14, createDepositButton(Material.EMERALD_BLOCK, ChatColor.GREEN + "Deposit All", "Deposit all carried money"));
 		inventory.setItem(22, createDepositButton(Material.BARRIER, ChatColor.RED + "Back", "Return to the hub"));
 		return inventory;
 	}

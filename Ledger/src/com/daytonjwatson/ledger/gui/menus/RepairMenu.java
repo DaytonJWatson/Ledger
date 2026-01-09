@@ -323,7 +323,7 @@ public class RepairMenu implements LedgerMenu {
 	}
 
 	private ItemStack createBackButton() {
-		ItemStack item = new ItemStack(Material.ARROW);
+		ItemStack item = new ItemStack(Material.BARRIER);
 		ItemMeta meta = item.getItemMeta();
 		if (meta == null) {
 			return item;

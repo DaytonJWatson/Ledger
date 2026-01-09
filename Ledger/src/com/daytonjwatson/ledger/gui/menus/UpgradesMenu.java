@@ -66,7 +66,7 @@ public class UpgradesMenu implements LedgerMenu {
 		inventory.setItem(47, createButton(Material.ARROW, ChatColor.YELLOW, "Previous Page"));
 		inventory.setItem(49, createPlayerInfoItem(player));
 		inventory.setItem(51, createButton(Material.ARROW, ChatColor.YELLOW, "Next Page"));
-		inventory.setItem(53, createButton(Material.SUNFLOWER, ChatColor.YELLOW, "Refresh"));
+		inventory.setItem(53, createButton(Material.CLOCK, ChatColor.YELLOW, "Refresh"));
 		return inventory;
 	}
 

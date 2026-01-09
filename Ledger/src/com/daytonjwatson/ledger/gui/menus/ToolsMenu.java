@@ -31,10 +31,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 public class ToolsMenu implements LedgerMenu {
 	private static final int MENU_SIZE = 54;
 	private static final int[] OFFER_SLOTS = {
-		10, 11, 12, 13, 14, 15, 16,
 		19, 20, 21, 22, 23, 24, 25,
 		28, 29, 30, 31, 32, 33, 34,
-		37, 38, 39, 40, 41, 42, 43
+		37, 38, 39, 40, 41, 42, 43,
+		46, 47, 48, 49, 50, 51, 52
 	};
 	private static final int PAGE_SIZE = OFFER_SLOTS.length;
 	private static final Map<ToolCategory, Integer> TAB_SLOTS = Map.of(
@@ -115,7 +115,7 @@ public class ToolsMenu implements LedgerMenu {
 		for (int slot = 45; slot < MENU_SIZE; slot++) {
 			inventory.setItem(slot, fillerItem);
 		}
-		inventory.setItem(45, createButton(Material.ARROW, ChatColor.RED + "Back", ChatColor.GRAY + "Return to the hub"));
+		inventory.setItem(45, createButton(Material.BARRIER, ChatColor.RED + "Back", ChatColor.GRAY + "Return to the hub"));
 		inventory.setItem(47, createButton(Material.ARROW, ChatColor.YELLOW + "Previous Page", ChatColor.GRAY + "View more tools"));
 		inventory.setItem(49, createUnlocksItem(player));
 		inventory.setItem(51, createButton(Material.ARROW, ChatColor.YELLOW + "Next Page", ChatColor.GRAY + "View more tools"));
