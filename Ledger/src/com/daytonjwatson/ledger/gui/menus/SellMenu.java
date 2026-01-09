@@ -118,6 +118,7 @@ public class SellMenu implements LedgerMenu {
 		List<String> lore = new ArrayList<>();
 		InventorySummary summary = summarizeInventory(inventory);
 		lore.add(ChatColor.GRAY + "Sell Slot Value: " + ChatColor.GOLD + "$" + formatMoney(summary.inventoryValue()));
+		lore.add(ChatColor.GRAY + "After Market Change: " + ChatColor.GOLD + "$" + formatMoney(summary.afterMarketValue()));
 		lore.add(ChatColor.GRAY + "Sellable Types: " + ChatColor.YELLOW + summary.distinctSellableTypes());
 		if (!summary.unsellableReasons().isEmpty()) {
 			for (Map.Entry<String, Integer> entry : summary.unsellableReasons().entrySet()) {
@@ -134,6 +135,8 @@ public class SellMenu implements LedgerMenu {
 		long total = 0L;
 		Set<Material> distinctTypes = new HashSet<>();
 		Map<String, Integer> unsellableReasons = new LinkedHashMap<>();
+		List<ItemStack> sellableItems = new ArrayList<>();
+		Map<Material, Integer> sellableQuantities = new LinkedHashMap<>();
 		for (int slot : SELL_SLOTS) {
 			ItemStack item = inventory.getItem(slot);
 			if (item == null || item.getType() == Material.AIR) {
@@ -150,8 +153,11 @@ public class SellMenu implements LedgerMenu {
 			}
 			distinctTypes.add(item.getType());
 			total += Math.round(price * item.getAmount());
+			sellableItems.add(item);
+			sellableQuantities.merge(item.getType(), item.getAmount(), Integer::sum);
 		}
-		return new InventorySummary(total, distinctTypes.size(), unsellableReasons);
+		long afterMarketValue = marketService.getProjectedSellValueAfterMarketChange(sellableItems, sellableQuantities);
+		return new InventorySummary(total, afterMarketValue, distinctTypes.size(), unsellableReasons);
 	}
 
 	private ItemStack createFillerItem() {
@@ -182,7 +188,8 @@ public class SellMenu implements LedgerMenu {
 		return String.format("%,d", value);
 	}
 
-	private record InventorySummary(long inventoryValue, int distinctSellableTypes, Map<String, Integer> unsellableReasons) {
+	private record InventorySummary(long inventoryValue, long afterMarketValue, int distinctSellableTypes,
+									Map<String, Integer> unsellableReasons) {
 	}
 
 	private static Set<Integer> buildSellSlots() {
