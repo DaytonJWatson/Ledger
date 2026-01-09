@@ -2,7 +2,6 @@ package com.daytonjwatson.ledger.farming;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.util.AtomicFileWriter;
-import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -25,7 +24,6 @@ import java.util.UUID;
 
 public class SoilFatigueService {
 	private static final String ROOT = "soilFatigue.entries";
-	private static final String FATIGUE_LORE_PREFIX = "Soil fatigue:";
 	private final JavaPlugin plugin;
 	private final ConfigManager configManager;
 	private final NamespacedKey fatigueKey;
@@ -118,7 +116,6 @@ public class SoilFatigueService {
 		double normalizedMultiplier = normalizeMultiplier(multiplier);
 		PersistentDataContainer container = meta.getPersistentDataContainer();
 		container.set(fatigueKey, PersistentDataType.DOUBLE, normalizedMultiplier);
-		updateFatigueLore(meta, normalizedMultiplier);
 		item.setItemMeta(meta);
 	}
 
@@ -182,25 +179,6 @@ public class SoilFatigueService {
 
 	private double clamp(double value, double min, double max) {
 		return Math.min(max, Math.max(min, value));
-	}
-
-	private void updateFatigueLore(ItemMeta meta, double normalizedMultiplier) {
-		double fatigue = clamp(1.0 - normalizedMultiplier, 0.0, 1.0);
-		int percent = (int) Math.round(fatigue * 100.0);
-		String display = ChatColor.GRAY + FATIGUE_LORE_PREFIX + " " + ChatColor.YELLOW + percent + "%";
-
-		java.util.List<String> lore = meta.getLore();
-		if (lore == null) {
-			lore = new java.util.ArrayList<>();
-		} else {
-			lore = new java.util.ArrayList<>(lore);
-		}
-		lore.removeIf(line -> {
-			String stripped = ChatColor.stripColor(line);
-			return stripped != null && stripped.startsWith(FATIGUE_LORE_PREFIX);
-		});
-		lore.add(display);
-		meta.setLore(lore);
 	}
 
 	private record SoilKey(UUID worldId, int x, int y, int z) {
