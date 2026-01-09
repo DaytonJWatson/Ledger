@@ -80,7 +80,8 @@ public class HubCommand implements CommandExecutor {
 		}
 		File pricesFile = new File(configManager.getDataFolder(), "prices.yml");
 		PriceBandTable bandTable = new PriceBandTable(configManager.getPriceBands());
-		PriceGenerator generator = new PriceGenerator(new ItemTagService(), bandTable);
+		PriceGenerator generator = new PriceGenerator(new ItemTagService(), bandTable,
+			configManager.isPriceGenerationDebugEnabled());
 		try {
 			generator.write(pricesFile, configManager.getPrices());
 		} catch (IOException e) {
@@ -140,7 +141,8 @@ public class HubCommand implements CommandExecutor {
 			sender.sendMessage(ChatColor.RED + "You do not have permission.");
 			return true;
 		}
-		PriceGenerator generator = new PriceGenerator(new ItemTagService(), new PriceBandTable(configManager.getPriceBands()));
+		PriceGenerator generator = new PriceGenerator(new ItemTagService(), new PriceBandTable(configManager.getPriceBands()),
+			configManager.isPriceGenerationDebugEnabled());
 		Map<PriceBandTag, PriceGenerator.PriceSummary> summary = new TreeMap<>(generator.summarize(configManager.getPrices()));
 		for (Map.Entry<PriceBandTag, PriceGenerator.PriceSummary> entry : summary.entrySet()) {
 			PriceGenerator.PriceSummary stats = entry.getValue();
