@@ -273,8 +273,6 @@ public class ConfigManager {
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_1", "Refinement: Autosmelt I", 4000, 1);
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_2", "Refinement: Autosmelt II", 6500, 2, "refine_autosmelt_1");
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_3", "Refinement: Autosmelt III", 9500, 3, "refine_autosmelt_2");
-		createRefinementUnlock(upgradesSection, "refine_autosmelt_4", "Refinement: Autosmelt IV", 13000, 4, "refine_autosmelt_3");
-		createRefinementUnlock(upgradesSection, "refine_autosmelt_5", "Refinement: Autosmelt V", 17500, 5, "refine_autosmelt_4");
 		writeYaml(file, yaml);
 	}
 
@@ -358,10 +356,19 @@ public class ConfigManager {
 		costSection.set("c0", cost);
 		costSection.set("g", 1.0);
 		section.set("refinementLevel", level);
-		section.set("description", "Unlock autosmelt level " + level + ".");
+		section.set("description", getRefinementDescription(level));
 		if (requires.length > 0) {
 			section.set("requires", requires);
 		}
+	}
+
+	private String getRefinementDescription(int level) {
+		String chance = switch (Math.max(1, Math.min(3, level))) {
+			case 1 -> "25%";
+			case 2 -> "50%";
+			default -> "75%";
+		};
+		return "Auto-smelt ores when mining with a " + chance + " chance.";
 	}
 
 	private interface DefaultWriter {
