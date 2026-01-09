@@ -54,8 +54,8 @@ public class BankMenu implements LedgerMenu {
 	public void onClick(Player player, int slot, ItemStack clicked, ClickType type, InventoryClickEvent event) {
 		switch (slot) {
 			case 12 -> handleDeposit(player, DepositMode.QUARTER);
-			case 13 -> handleDeposit(player, DepositMode.ALL);
-			case 14 -> handleDeposit(player, DepositMode.HALF);
+			case 13 -> handleDeposit(player, DepositMode.HALF);
+			case 14 -> handleDeposit(player, DepositMode.ALL);
 			case 22 -> guiManager.open(MenuId.HUB, player);
 			default -> {
 			}
