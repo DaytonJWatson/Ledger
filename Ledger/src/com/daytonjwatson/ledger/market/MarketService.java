@@ -107,7 +107,7 @@ public class MarketService {
 		if (player == null) {
 			return getSellPrice(item);
 		}
-		double base = getRefinedBasePrice(player.getUniqueId(), item);
+		double base = getRefinedBasePrice(item);
 		if (base <= 0.0) {
 			return 0.0;
 		}
@@ -384,7 +384,7 @@ public class MarketService {
 		return 1.0 - (0.015 * specializationLevel);
 	}
 
-	private double getRefinedBasePrice(UUID uuid, ItemStack item) {
+	private double getRefinedBasePrice(ItemStack item) {
 		if (item == null || item.getType() == Material.AIR) {
 			return 0.0;
 		}
@@ -392,44 +392,7 @@ public class MarketService {
 		if (base <= 0.0) {
 			return 0.0;
 		}
-		base *= silkTouchMarkService.getSellMultiplier(item);
-		int refinementLevel = upgradeService.getHighestRefinementLevel(uuid);
-		if (refinementLevel <= 0) {
-			return base;
-		}
-		Material output = getRefinementOutput(item.getType());
-		if (output == null) {
-			return base;
-		}
-		double outputPrice = getSellPrice(ItemKeyUtil.toKey(output));
-		if (outputPrice <= 0.0) {
-			return base;
-		}
-		double feeMultiplier = 1.0 - getRefinementFee(refinementLevel);
-		return outputPrice * feeMultiplier * silkTouchMarkService.getSellMultiplier(item);
-	}
-
-	private double getRefinementFee(int level) {
-		return switch (Math.max(1, Math.min(5, level))) {
-			case 1 -> 0.15;
-			case 2 -> 0.12;
-			case 3 -> 0.09;
-			case 4 -> 0.07;
-			default -> 0.05;
-		};
-	}
-
-	private Material getRefinementOutput(Material input) {
-		if (input == null) {
-			return null;
-		}
-		return switch (input) {
-			case IRON_ORE, DEEPSLATE_IRON_ORE, RAW_IRON -> Material.IRON_INGOT;
-			case GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE, RAW_GOLD -> Material.GOLD_INGOT;
-			case COPPER_ORE, DEEPSLATE_COPPER_ORE, RAW_COPPER -> Material.COPPER_INGOT;
-			case ANCIENT_DEBRIS -> Material.NETHERITE_SCRAP;
-			default -> null;
-		};
+		return base * silkTouchMarkService.getSellMultiplier(item);
 	}
 
 	private SpecializationDomain getDomain(Material material) {
