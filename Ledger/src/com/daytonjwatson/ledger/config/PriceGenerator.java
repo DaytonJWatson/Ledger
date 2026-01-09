@@ -288,14 +288,13 @@ public class PriceGenerator {
 			}
 			double jitter = computeJitter(material);
 			double price = band.minPrice() + jitter * (band.maxPrice() - band.minPrice());
-			double preMultiplier = roundTwoDecimals(price);
 			ProcessingResult processing = processingMultiplier(material, tag);
-			double multiplied = price * processing.multiplier();
-			double base = applyCapsAndRounding(multiplied, band);
+			price = price * processing.multiplier();
+			double base = roundTwoDecimals(price);
 			if (debugProcessing) {
 				LOGGER.info(() -> "PriceGen material=" + material.name()
 					+ " tag=" + tag.name()
-					+ " base=" + preMultiplier
+					+ " base=" + roundTwoDecimals(band.minPrice() + jitter * (band.maxPrice() - band.minPrice()))
 					+ " multiplier=" + processing.multiplier()
 					+ " final=" + base
 					+ " reason=" + processing.reason());
@@ -370,14 +369,6 @@ public class PriceGenerator {
 
 	private double roundTwoDecimals(double value) {
 		return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
-	}
-
-	private double applyCapsAndRounding(double value, PriceBandTable.PriceBand band) {
-		if (band.cap() <= 0.0) {
-			return 0.0;
-		}
-		double capped = Math.min(value, band.cap());
-		return roundTwoDecimals(Math.max(0.0, capped));
 	}
 
 	private ProcessingResult processingMultiplier(Material material, PriceBandTag tag) {
