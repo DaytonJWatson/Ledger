@@ -17,6 +17,7 @@ import org.bukkit.inventory.ShapelessRecipe;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -133,6 +134,35 @@ public class MarketService {
 		return price * quantity;
 	}
 
+	public long getProjectedSellValueAfterMarketChange(List<ItemStack> items, Map<Material, Integer> quantities) {
+		if (items == null || items.isEmpty() || quantities == null || quantities.isEmpty()) {
+			return 0L;
+		}
+		MarketSnapshot snapshot = snapshotMarketState(quantities.keySet());
+		try {
+			for (Map.Entry<Material, Integer> entry : quantities.entrySet()) {
+				if (entry.getKey() == null || entry.getValue() == null) {
+					continue;
+				}
+				applySale(ItemKeyUtil.toKey(entry.getKey()), entry.getValue());
+			}
+			long total = 0L;
+			for (ItemStack item : items) {
+				if (item == null || item.getType() == Material.AIR) {
+					continue;
+				}
+				double price = getSellPrice(item);
+				if (price <= 0.0) {
+					continue;
+				}
+				total += Math.round(price * item.getAmount());
+			}
+			return total;
+		} finally {
+			restoreMarketState(snapshot);
+		}
+	}
+
 	public void applySale(String key, int quantity) {
 		String normalized = ItemKeyUtil.normalizeKey(key);
 		if (normalized == null) {
@@ -143,6 +173,46 @@ public class MarketService {
 		state.setSoldAccumulator(state.getSoldAccumulator() + quantity);
 		state.setLastUpdate(System.currentTimeMillis());
 		marketVersion++;
+	}
+
+	private MarketSnapshot snapshotMarketState(Set<Material> materials) {
+		Map<String, ItemStateSnapshot> itemSnapshots = new HashMap<>();
+		for (Material material : materials) {
+			if (material == null) {
+				continue;
+			}
+			String key = ItemKeyUtil.normalizeKey(ItemKeyUtil.toKey(material));
+			if (key == null) {
+				continue;
+			}
+			MarketState.ItemState state = marketState.getOrCreateItem(key);
+			itemSnapshots.put(key, new ItemStateSnapshot(state.getSoldAccumulator(), state.getLastUpdate(), state.getMinedTotal()));
+		}
+		return new MarketSnapshot(itemSnapshots, marketVersion, priceCacheVersion, new HashMap<>(priceCache));
+	}
+
+	private void restoreMarketState(MarketSnapshot snapshot) {
+		if (snapshot == null) {
+			return;
+		}
+		for (Map.Entry<String, ItemStateSnapshot> entry : snapshot.itemSnapshots().entrySet()) {
+			MarketState.ItemState state = marketState.getOrCreateItem(entry.getKey());
+			ItemStateSnapshot itemSnapshot = entry.getValue();
+			state.setSoldAccumulator(itemSnapshot.soldAccumulator());
+			state.setLastUpdate(itemSnapshot.lastUpdate());
+			state.setMinedTotal(itemSnapshot.minedTotal());
+		}
+		marketVersion = snapshot.marketVersion();
+		priceCacheVersion = snapshot.priceCacheVersion();
+		priceCache.clear();
+		priceCache.putAll(snapshot.priceCache());
+	}
+
+	private record MarketSnapshot(Map<String, ItemStateSnapshot> itemSnapshots, long marketVersion,
+								  long priceCacheVersion, Map<String, Double> priceCache) {
+	}
+
+	private record ItemStateSnapshot(double soldAccumulator, long lastUpdate, double minedTotal) {
 	}
 
 	public void recordMining(String key, double quantity) {
