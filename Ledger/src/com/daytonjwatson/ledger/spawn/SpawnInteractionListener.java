@@ -33,6 +33,8 @@ public class SpawnInteractionListener implements Listener {
 
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockPlace(BlockPlaceEvent event) {
+		if(event.getPlayer().isOp()) return;
+		
 		if (spawnRegionService.isInSpawn(event.getBlock().getLocation())) {
 			event.setCancelled(true);
 			event.getPlayer().sendMessage(ChatColor.RED + "You cannot build at spawn.");
@@ -41,6 +43,8 @@ public class SpawnInteractionListener implements Listener {
 
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockBreak(BlockBreakEvent event) {
+		if(event.getPlayer().isOp()) return;
+		
 		if (spawnRegionService.isInSpawn(event.getBlock().getLocation())) {
 			event.setCancelled(true);
 			event.getPlayer().sendMessage(ChatColor.RED + "You cannot break blocks at spawn.");
@@ -49,6 +53,8 @@ public class SpawnInteractionListener implements Listener {
 
 	@EventHandler(ignoreCancelled = true)
 	public void onEntityDamage(EntityDamageEvent event) {
+		if(event.getEntity() instanceof Player && event.getEntity().isOp()) return;
+		
 		if (spawnRegionService.isInSpawn(event.getEntity().getLocation())) {
 			event.setCancelled(true);
 		}
@@ -56,6 +62,8 @@ public class SpawnInteractionListener implements Listener {
 
 	@EventHandler(ignoreCancelled = true)
 	public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+		if(event.getDamager() instanceof Player && event.getEntity().isOp()) return;
+		
 		Entity target = event.getEntity();
 		if (spawnRegionService.isInSpawn(target.getLocation())) {
 			event.setCancelled(true);
