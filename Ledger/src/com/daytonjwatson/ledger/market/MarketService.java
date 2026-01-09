@@ -2,9 +2,11 @@ package com.daytonjwatson.ledger.market;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
+import com.daytonjwatson.ledger.market.PriceBandTag;
 import com.daytonjwatson.ledger.farming.SoilFatigueService;
 import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.upgrades.UpgradeService;
+import com.daytonjwatson.ledger.util.ItemKeyUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -14,19 +16,22 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ShapelessRecipe;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class MarketService {
 	private final ConfigManager configManager;
 	private final MarketState marketState;
-	private final PriceTable priceTable;
+	private PriceTable priceTable;
 	private final UpgradeService upgradeService;
 	private final SilkTouchMarkService silkTouchMarkService;
 	private final ScarcityWindowService scarcityWindowService;
 	private final SoilFatigueService soilFatigueService;
 	private final Map<String, Double> priceCache = new HashMap<>();
+	private final Set<String> missingKeys = new HashSet<>();
 	private long marketVersion = 0;
 	private long priceCacheVersion = -1;
 
@@ -39,14 +44,14 @@ public class MarketService {
 		this.silkTouchMarkService = silkTouchMarkService;
 		this.scarcityWindowService = scarcityWindowService;
 		this.soilFatigueService = soilFatigueService;
-		this.priceTable = new PriceTable(configManager.getPrices());
+		this.priceTable = new PriceTable(configManager.getPrices(), configManager.getOverrides());
 	}
 
 	public double getSellPrice(ItemStack item) {
 		if (item == null || item.getType() == Material.AIR) {
 			return 0.0;
 		}
-		double base = getSellPrice(item.getType().name());
+		double base = getSellPrice(ItemKeyUtil.toKey(item.getType()));
 		if (base <= 0.0) {
 			return 0.0;
 		}
@@ -55,12 +60,16 @@ public class MarketService {
 	}
 
 	public double getSellPrice(String key) {
-		if (key == null) {
+		String normalized = ItemKeyUtil.normalizeKey(key);
+		if (normalized == null) {
 			return 0.0;
 		}
-		String normalized = key.toUpperCase();
 		PriceTable.PriceEntry entry = priceTable.getEntry(normalized);
-		if (entry == null || entry.getBase() <= 0.0) {
+		if (entry == null) {
+			logMissingPrice(normalized);
+			return 0.0;
+		}
+		if (entry.isUnsellable() || entry.getBase() <= 0.0) {
 			return 0.0;
 		}
 		if (priceCacheVersion != marketVersion) {
@@ -74,11 +83,11 @@ public class MarketService {
 		if (item == null || item.getType() == Material.AIR || quantity <= 0) {
 			return 0.0;
 		}
-		double price = getSellPrice(item.getType().name());
+		double price = getSellPrice(ItemKeyUtil.toKey(item.getType()));
 		if (price <= 0.0) {
 			return 0.0;
 		}
-		applySale(item.getType().name(), quantity);
+		applySale(ItemKeyUtil.toKey(item.getType()), quantity);
 		return price * quantity;
 	}
 
@@ -99,7 +108,7 @@ public class MarketService {
 		int logisticsLevel = upgradeService.getLevel(uuid, "logistics");
 		String specialization = upgradeService.getSpecializationChoice(uuid);
 		int specializationLevel = getSpecializationLevel(uuid, specialization);
-		double windowMultiplier = scarcityWindowService.getWindowMultiplier(player, item.getType().name(), ScarcityWindowService.WindowContext.MARKET);
+		double windowMultiplier = scarcityWindowService.getWindowMultiplier(player, ItemKeyUtil.toKey(item.getType()), ScarcityWindowService.WindowContext.MARKET);
 		double price = base * windowMultiplier;
 		price *= upgradeService.getBarterMultiplier(barterLevel);
 		price *= upgradeService.getLogisticsMultiplier(logisticsLevel, distinctTypes);
@@ -120,12 +129,16 @@ public class MarketService {
 		if (price <= 0.0) {
 			return 0.0;
 		}
-		applySale(item.getType().name(), quantity);
+		applySale(ItemKeyUtil.toKey(item.getType()), quantity);
 		return price * quantity;
 	}
 
 	public void applySale(String key, int quantity) {
-		MarketState.ItemState state = marketState.getOrCreateItem(key);
+		String normalized = ItemKeyUtil.normalizeKey(key);
+		if (normalized == null) {
+			return;
+		}
+		MarketState.ItemState state = marketState.getOrCreateItem(normalized);
 		decay(state);
 		state.setSoldAccumulator(state.getSoldAccumulator() + quantity);
 		state.setLastUpdate(System.currentTimeMillis());
@@ -133,10 +146,11 @@ public class MarketService {
 	}
 
 	public void recordMining(String key, double quantity) {
-		if (key == null || quantity <= 0.0) {
+		String normalized = ItemKeyUtil.normalizeKey(key);
+		if (normalized == null || quantity <= 0.0) {
 			return;
 		}
-		MarketState.ItemState state = marketState.getOrCreateItem(key);
+		MarketState.ItemState state = marketState.getOrCreateItem(normalized);
 		state.setMinedTotal(state.getMinedTotal() + quantity);
 		marketVersion++;
 	}
@@ -155,7 +169,8 @@ public class MarketService {
 	}
 
 	private double applyAntiArbitrage(PriceTable.PriceEntry entry, String key, double price) {
-		if (!entry.isInfra()) {
+		String tag = entry.getTag() == null ? "" : entry.getTag().toUpperCase(Locale.ROOT);
+		if (!tag.equals(PriceBandTag.UTILITY_INFRA.name()) && !tag.equals(PriceBandTag.REDSTONE_INFRA.name())) {
 			return price;
 		}
 		Material material = Material.matchMaterial(key);
@@ -203,7 +218,7 @@ public class MarketService {
 			if (ingredient == null || ingredient.getType() == Material.AIR) {
 				continue;
 			}
-			String ingredientKey = ingredient.getType().name();
+			String ingredientKey = ItemKeyUtil.toKey(ingredient.getType());
 			if (ingredientKey.equalsIgnoreCase(key)) {
 				return 0.0;
 			}
@@ -223,7 +238,7 @@ public class MarketService {
 			if (ingredient == null || ingredient.getType() == Material.AIR) {
 				continue;
 			}
-			String ingredientKey = ingredient.getType().name();
+			String ingredientKey = ItemKeyUtil.toKey(ingredient.getType());
 			if (ingredientKey.equalsIgnoreCase(key)) {
 				return 0.0;
 			}
@@ -239,16 +254,6 @@ public class MarketService {
 	private double getScarcityFactor(PriceTable.PriceEntry entry, String key, MarketState.ItemState state) {
 		double baseline = entry.getBaseline();
 		double rho = entry.getRho();
-		if (baseline <= 0.0 || rho <= 0.0) {
-			MarketItemTag tag = MarketItemTag.fromKey(key);
-			PriceTable.PriceEntry tagEntry = priceTable.getEntry(tag.toTagKey());
-			if (baseline <= 0.0 && tagEntry != null) {
-				baseline = tagEntry.getBaseline();
-			}
-			if (rho <= 0.0 && tagEntry != null) {
-				rho = tagEntry.getRho();
-			}
-		}
 		if (baseline <= 0.0) {
 			baseline = configManager.getConfig().getDouble("market.depletionBaseline", 50000.0);
 		}
@@ -308,5 +313,45 @@ public class MarketService {
 			return price;
 		}
 		return price * soilFatigueService.getMultiplier(item);
+	}
+
+	public PriceTable getPriceTable() {
+		return priceTable;
+	}
+
+	public void reloadPrices() {
+		priceCache.clear();
+		priceCacheVersion = -1;
+		missingKeys.clear();
+		priceTable = new PriceTable(configManager.getPrices(), configManager.getOverrides());
+	}
+
+	public void validateCoverage() {
+		int total = 0;
+		int covered = 0;
+		for (Material material : Material.values()) {
+			if (material == Material.AIR) {
+				continue;
+			}
+			total++;
+			String key = ItemKeyUtil.toKey(material);
+			if (priceTable.getEntry(key) != null) {
+				covered++;
+			}
+		}
+		if (total == 0) {
+			return;
+		}
+		double ratio = (double) covered / total;
+		if (ratio < 0.9) {
+			Bukkit.getLogger().warning("[Ledger] Price coverage below 90%: " + covered + "/" + total);
+		}
+	}
+
+	private void logMissingPrice(String key) {
+		if (!missingKeys.add(key)) {
+			return;
+		}
+		Bukkit.getLogger().warning("[Ledger] Missing price entry for key: " + key);
 	}
 }

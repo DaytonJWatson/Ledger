@@ -24,6 +24,7 @@ import com.daytonjwatson.ledger.market.MarketService;
 import com.daytonjwatson.ledger.market.MarketState;
 import com.daytonjwatson.ledger.market.MarketStorageYaml;
 import com.daytonjwatson.ledger.market.ScarcityWindowService;
+import com.daytonjwatson.ledger.market.SellValidator;
 import com.daytonjwatson.ledger.mobs.MobKillListener;
 import com.daytonjwatson.ledger.mobs.MobPayoutService;
 import com.daytonjwatson.ledger.spawn.AnimalSellListener;
@@ -64,6 +65,7 @@ public class LedgerPlugin extends JavaPlugin {
 	private SoilFatigueService soilFatigueService;
 	private AnimalSellService animalSellService;
 	private SellService sellService;
+	private SellValidator sellValidator;
 	private GuiManager guiManager;
 	
 	@Override
@@ -85,18 +87,20 @@ public class LedgerPlugin extends JavaPlugin {
 		this.scarcityWindowService = new ScarcityWindowService(configManager);
 		this.soilFatigueService = new SoilFatigueService(this, configManager);
 		soilFatigueService.load();
-		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService, scarcityWindowService, soilFatigueService);
-		this.bankService = new BankService(spawnRegionService, moneyService);
 		this.toolMetaService = new ToolMetaService(this);
+		this.marketService = new MarketService(configManager, marketState, upgradeService, silkTouchMarkService, scarcityWindowService, soilFatigueService);
+		marketService.validateCoverage();
+		this.bankService = new BankService(spawnRegionService, moneyService);
 		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService, toolMetaService);
 		this.repairService = new RepairService(configManager, moneyService, toolMetaService, spawnRegionService, toolVendorService);
 		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
 		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
-		this.loreValueService = new LoreValueService(this, configManager, marketService);
-		this.sellService = new SellService(marketService, moneyService);
+		this.sellValidator = new SellValidator(marketService, toolMetaService);
+		this.loreValueService = new LoreValueService(this, configManager, marketService, sellValidator);
+		this.sellService = new SellService(marketService, moneyService, sellValidator);
 		this.guiManager = new GuiManager(spawnRegionService);
 		guiManager.register(new HubMenu(guiManager));
-		guiManager.register(new SellMenu(guiManager, marketService, sellService));
+		guiManager.register(new SellMenu(guiManager, marketService, sellService, sellValidator));
 		guiManager.register(new BankMenu(guiManager, moneyService, bankService, spawnRegionService));
 		guiManager.register(new ToolsMenu(guiManager, moneyService, toolVendorService, spawnRegionService));
 		guiManager.register(new RepairMenu(guiManager, moneyService, repairService, toolMetaService, toolVendorService, this));
@@ -105,7 +109,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(new SpawnInteractionListener(spawnRegionService, guiManager, configManager), this);
 		Bukkit.getPluginManager().registerEvents(new DeathPenaltyListener(configManager, moneyService, upgradeService), this);
 		Bukkit.getPluginManager().registerEvents(new MobKillListener(configManager, mobPayoutService, moneyService), this);
-		Bukkit.getPluginManager().registerEvents(new DepletionListener(configManager, marketService), this);
+		Bukkit.getPluginManager().registerEvents(new DepletionListener(marketService), this);
 		Bukkit.getPluginManager().registerEvents(new CropHarvestListener(soilFatigueService), this);
 		Bukkit.getPluginManager().registerEvents(new AnimalSellListener(animalSellService), this);
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
@@ -119,7 +123,7 @@ public class LedgerPlugin extends JavaPlugin {
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
 		getCommand("tools").setExecutor(new MenuCommand(guiManager, MenuId.TOOLS));
 		getCommand("repair").setExecutor(new MenuCommand(guiManager, MenuId.REPAIR));
-		getCommand("ledger").setExecutor(new HubCommand(guiManager));
+		getCommand("ledger").setExecutor(new HubCommand(guiManager, configManager, marketService, mobPayoutService));
 		UpgradeCommand upgradeCommand = new UpgradeCommand(upgradeService);
 		getCommand("upgrade").setExecutor(upgradeCommand);
 		getCommand("upgrades").setExecutor(new MenuCommand(guiManager, MenuId.UPGRADES));

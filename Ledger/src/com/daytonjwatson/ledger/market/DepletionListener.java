@@ -1,7 +1,7 @@
 package com.daytonjwatson.ledger.market;
 
-import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
+import com.daytonjwatson.ledger.util.ItemKeyUtil;
 import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -9,11 +9,9 @@ import org.bukkit.event.block.BlockBreakEvent;
 
 public class DepletionListener implements Listener {
 	private final MarketService marketService;
-	private final PriceTable priceTable;
 
-	public DepletionListener(ConfigManager configManager, MarketService marketService) {
+	public DepletionListener(MarketService marketService) {
 		this.marketService = marketService;
-		this.priceTable = new PriceTable(configManager.getPrices());
 	}
 
 	@EventHandler(ignoreCancelled = true)
@@ -22,19 +20,15 @@ public class DepletionListener implements Listener {
 		if (material == null || material == Material.AIR) {
 			return;
 		}
-		String key = material.name();
-		if (!isTracked(key, material)) {
+		String key = ItemKeyUtil.toKey(material);
+		if (!isTracked(key)) {
 			return;
 		}
 		marketService.recordMining(key, 1.0);
 	}
 
-	private boolean isTracked(String key, Material material) {
-		PriceTable.PriceEntry entry = priceTable.getEntry(key);
-		if (entry != null) {
-			return true;
-		}
-		MarketItemTag tag = MarketItemTag.fromMaterial(material);
-		return priceTable.getEntry(tag.toTagKey()) != null;
+	private boolean isTracked(String key) {
+		PriceTable.PriceEntry entry = marketService.getPriceTable().getEntry(key);
+		return entry != null && !entry.isUnsellable();
 	}
 }

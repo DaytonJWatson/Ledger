@@ -2,6 +2,7 @@ package com.daytonjwatson.ledger.items;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.market.MarketService;
+import com.daytonjwatson.ledger.market.SellValidator;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -24,11 +25,13 @@ import java.util.List;
 public class LoreValueService implements Listener {
 	private final JavaPlugin plugin;
 	private final MarketService marketService;
+	private final SellValidator sellValidator;
 	private final NamespacedKey priceKey;
 
-	public LoreValueService(JavaPlugin plugin, ConfigManager configManager, MarketService marketService) {
+	public LoreValueService(JavaPlugin plugin, ConfigManager configManager, MarketService marketService, SellValidator sellValidator) {
 		this.plugin = plugin;
 		this.marketService = marketService;
+		this.sellValidator = sellValidator;
 		this.priceKey = new NamespacedKey(plugin, "lastDisplayedPrice");
 	}
 
@@ -55,6 +58,10 @@ public class LoreValueService implements Listener {
 		}
 		ItemMeta meta = item.getItemMeta();
 		if (meta == null) {
+			return;
+		}
+		if (!sellValidator.validate(item).sellable()) {
+			clearPriceMeta(item);
 			return;
 		}
 		double price = marketService.getSellPrice(player, item);

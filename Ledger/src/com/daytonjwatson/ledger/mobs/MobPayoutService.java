@@ -9,14 +9,18 @@ import org.bukkit.entity.Player;
 public class MobPayoutService {
 	private final ConfigManager configManager;
 	private final MarketState marketState;
-	private final PriceTable priceTable;
+	private PriceTable priceTable;
 	private final ScarcityWindowService scarcityWindowService;
 
 	public MobPayoutService(ConfigManager configManager, MarketState marketState, ScarcityWindowService scarcityWindowService) {
 		this.configManager = configManager;
 		this.marketState = marketState;
 		this.scarcityWindowService = scarcityWindowService;
-		this.priceTable = new PriceTable(configManager.getPrices());
+		this.priceTable = new PriceTable(configManager.getPrices(), configManager.getOverrides());
+	}
+
+	public void reloadPrices() {
+		this.priceTable = new PriceTable(configManager.getPrices(), configManager.getOverrides());
 	}
 
 	public double getPayout(Player player, String mobKey) {
