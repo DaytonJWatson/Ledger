@@ -356,10 +356,19 @@ public class ConfigManager {
 		costSection.set("c0", cost);
 		costSection.set("g", 1.0);
 		section.set("refinementLevel", level);
-		section.set("description", "Unlock autosmelt level " + level + ".");
+		section.set("description", getRefinementDescription(level));
 		if (requires.length > 0) {
 			section.set("requires", requires);
 		}
+	}
+
+	private String getRefinementDescription(int level) {
+		String chance = switch (Math.max(1, Math.min(3, level))) {
+			case 1 -> "25%";
+			case 2 -> "50%";
+			default -> "75%";
+		};
+		return "Auto-smelt ores when mining with a " + chance + " chance.";
 	}
 
 	private interface DefaultWriter {
