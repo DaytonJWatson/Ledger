@@ -172,7 +172,6 @@ public class MoneyService {
 	}
 
 	public void applyDeathLoss(Player player) {
-		PlayerBalance balance = getBalance(player.getUniqueId());
 		double baseLoss = configManager.getConfig().getDouble("economy.loss.base", 0.30);
 		double floor = configManager.getConfig().getDouble("economy.loss.floor", 0.10);
 		double loss = Math.max(floor, baseLoss);

@@ -16,7 +16,6 @@ public class RepairService {
 	private final double repairBase;
 	private final double repairCountFactor;
 	private final double repairCap;
-	private final double globalBase;
 	private final ToolVendorService toolVendorService;
 
 	public RepairService(ConfigManager configManager, MoneyService moneyService, ToolMetaService toolMetaService, SpawnRegionService spawnRegionService, ToolVendorService toolVendorService) {
@@ -26,7 +25,7 @@ public class RepairService {
 		this.repairBase = configManager.getConfig().getDouble("tools.repairBase", 0.10);
 		this.repairCountFactor = configManager.getConfig().getDouble("tools.repairCountFactor", 0.04);
 		this.repairCap = configManager.getConfig().getDouble("tools.repairCap", 0.60);
-		this.globalBase = configManager.getConfig().getDouble("tools.globalBase", 8000.0);
+		configManager.getConfig().getDouble("tools.globalBase", 8000.0);
 		this.toolVendorService = toolVendorService;
 	}
 
