@@ -75,7 +75,7 @@ public class PriceGenerator {
 	private static final EnumSet<Material> GEMS = EnumSet.of(
 		Material.DIAMOND,
 		Material.EMERALD,
-		Material.NETHER_QUARTZ,
+		Material.NETHER_QUARTZ_ORE,
 		Material.AMETHYST_SHARD
 	);
 	private static final EnumSet<Material> STORAGE_BLOCKS = EnumSet.of(
@@ -391,7 +391,7 @@ public class PriceGenerator {
 				multiplier = maxMultiplier(multiplier, ingotMultiplier, reasons, "ingot");
 			}
 			if (isGem(material)) {
-				double gemMultiplier = material == Material.NETHER_QUARTZ ? 1.05 : 1.15;
+				double gemMultiplier = material == Material.NETHER_QUARTZ_ORE ? 1.05 : 1.15;
 				multiplier = maxMultiplier(multiplier, gemMultiplier, reasons, "gem");
 			}
 			multiplier = maxMultiplier(multiplier, cropMultiplier(material, reasons), reasons, null);
