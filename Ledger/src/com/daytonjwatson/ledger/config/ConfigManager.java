@@ -273,8 +273,6 @@ public class ConfigManager {
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_1", "Refinement: Autosmelt I", 4000, 1);
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_2", "Refinement: Autosmelt II", 6500, 2, "refine_autosmelt_1");
 		createRefinementUnlock(upgradesSection, "refine_autosmelt_3", "Refinement: Autosmelt III", 9500, 3, "refine_autosmelt_2");
-		createRefinementUnlock(upgradesSection, "refine_autosmelt_4", "Refinement: Autosmelt IV", 13000, 4, "refine_autosmelt_3");
-		createRefinementUnlock(upgradesSection, "refine_autosmelt_5", "Refinement: Autosmelt V", 17500, 5, "refine_autosmelt_4");
 		writeYaml(file, yaml);
 	}
 

@@ -33,6 +33,7 @@ import com.daytonjwatson.ledger.spawn.SellService;
 import com.daytonjwatson.ledger.spawn.SpawnInteractionListener;
 import com.daytonjwatson.ledger.spawn.SpawnRegionService;
 import com.daytonjwatson.ledger.tools.RepairService;
+import com.daytonjwatson.ledger.tools.AutoSmeltListener;
 import com.daytonjwatson.ledger.tools.SilkTouchMarkListener;
 import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.tools.ToolMetaService;
@@ -115,6 +116,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
+		Bukkit.getPluginManager().registerEvents(new AutoSmeltListener(upgradeService), this);
 		Bukkit.getPluginManager().registerEvents(new GuiListener(guiManager), this);
 
 		getCommand("sell").setExecutor(new MenuCommand(guiManager, MenuId.SELL));
