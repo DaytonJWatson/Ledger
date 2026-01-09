@@ -2,7 +2,6 @@ package com.daytonjwatson.ledger.market;
 
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
-import com.daytonjwatson.ledger.market.PriceBandTag;
 import com.daytonjwatson.ledger.farming.SoilFatigueService;
 import com.daytonjwatson.ledger.tools.SilkTouchMarkService;
 import com.daytonjwatson.ledger.upgrades.UpgradeService;
