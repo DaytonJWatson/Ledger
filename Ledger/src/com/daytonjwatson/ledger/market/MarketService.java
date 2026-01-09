@@ -135,6 +135,10 @@ public class MarketService {
 	}
 
 	public long getProjectedSellValueAfterMarketChange(List<ItemStack> items, Map<Material, Integer> quantities) {
+		return getProjectedSellValueAfterMarketChange(null, 1, items, quantities);
+	}
+
+	public long getProjectedSellValueAfterMarketChange(Player player, int distinctTypes, List<ItemStack> items, Map<Material, Integer> quantities) {
 		if (items == null || items.isEmpty() || quantities == null || quantities.isEmpty()) {
 			return 0L;
 		}
@@ -151,7 +155,7 @@ public class MarketService {
 				if (item == null || item.getType() == Material.AIR) {
 					continue;
 				}
-				double price = getSellPrice(item);
+				double price = player == null ? getSellPrice(item) : getSellPrice(player, item, distinctTypes);
 				if (price <= 0.0) {
 					continue;
 				}
