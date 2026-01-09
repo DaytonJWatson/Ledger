@@ -12,6 +12,8 @@ public class ConfigManager {
 	private final JavaPlugin plugin;
 	private YamlConfiguration config;
 	private YamlConfiguration prices;
+	private YamlConfiguration priceBands;
+	private YamlConfiguration overrides;
 	private YamlConfiguration upgrades;
 	private YamlConfiguration spawn;
 
@@ -22,6 +24,8 @@ public class ConfigManager {
 	public void loadAll() {
 		AtomicFileWriter.ensureDirectory(plugin.getDataFolder());
 		this.config = loadOrCreate(new File(plugin.getDataFolder(), "config.yml"), this::writeDefaultConfig);
+		this.priceBands = loadOrCreate(new File(plugin.getDataFolder(), "price_bands.yml"), this::writeDefaultPriceBands);
+		this.overrides = loadOrCreate(new File(plugin.getDataFolder(), "overrides.yml"), this::writeDefaultOverrides);
 		this.prices = loadOrCreate(new File(plugin.getDataFolder(), "prices.yml"), this::writeDefaultPrices);
 		this.upgrades = loadOrCreate(new File(plugin.getDataFolder(), "upgrades.yml"), this::writeDefaultUpgrades);
 		this.spawn = loadOrCreate(new File(plugin.getDataFolder(), "spawn.yml"), this::writeDefaultSpawn);
@@ -35,12 +39,30 @@ public class ConfigManager {
 		return prices;
 	}
 
+	public YamlConfiguration getPriceBands() {
+		return priceBands;
+	}
+
+	public YamlConfiguration getOverrides() {
+		return overrides;
+	}
+
 	public YamlConfiguration getUpgrades() {
 		return upgrades;
 	}
 
 	public YamlConfiguration getSpawn() {
 		return spawn;
+	}
+
+	public File getDataFolder() {
+		return plugin.getDataFolder();
+	}
+
+	public void reloadPrices() {
+		this.priceBands = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "price_bands.yml"));
+		this.overrides = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "overrides.yml"));
+		this.prices = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "prices.yml"));
 	}
 
 	private YamlConfiguration loadOrCreate(File file, DefaultWriter writer) {
@@ -86,96 +108,10 @@ public class ConfigManager {
 	}
 
 	private void writeDefaultPrices(File file) throws IOException {
-		YamlConfiguration yaml = new YamlConfiguration();
-		ConfigurationSection pricesSection = yaml.createSection("prices");
-		createPrice(pricesSection, "STONE", 1.0, 10000, 50000.0, 0.25, false);
-		createPrice(pricesSection, "COBBLESTONE", 0.7, 10000, 50000.0, 0.25, false);
-		createPrice(pricesSection, "IRON_INGOT", 25.0, 5000, 15000.0, 0.35, false);
-		createPrice(pricesSection, "GOLD_INGOT", 40.0, 4000, 12000.0, 0.35, false);
-		createPrice(pricesSection, "DIAMOND", 250.0, 1000, 5000.0, 0.40, false);
-		createPrice(pricesSection, "NETHERITE_INGOT", 1200.0, 500, 2000.0, 0.45, false);
-		createPrice(pricesSection, "WHEAT", 4.0, 8000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "CARROT", 3.5, 8000, 35000.0, 0.20, false);
-		createPrice(pricesSection, "POTATO", 3.5, 8000, 35000.0, 0.20, false);
-		createPrice(pricesSection, "BEEF", 8.0, 6000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "PORKCHOP", 8.0, 6000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "CHICKEN", 6.0, 6000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "CHEST", 6.0, 12000, 50000.0, 0.20, true);
-		createPrice(pricesSection, "LADDER", 1.2, 15000, 50000.0, 0.20, true);
-		createPrice(pricesSection, "RAIL", 2.5, 12000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "POWERED_RAIL", 8.0, 8000, 30000.0, 0.20, true);
-		createPrice(pricesSection, "TORCH", 0.8, 20000, 60000.0, 0.20, true);
-		createPrice(pricesSection, "OAK_PLANKS", 0.5, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "STONE_BRICKS", 1.5, 15000, 50000.0, 0.20, true);
-		createPrice(pricesSection, "GLASS", 1.4, 15000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "FURNACE", 3.0, 12000, 50000.0, 0.20, true);
-		createPrice(pricesSection, "HOPPER", 18.0, 5000, 15000.0, 0.25, true);
-		createPrice(pricesSection, "BARREL", 5.0, 12000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "CARTOGRAPHY_TABLE", 8.0, 8000, 30000.0, 0.20, true);
-		createPrice(pricesSection, "SMOKER", 6.0, 10000, 30000.0, 0.20, true);
-		createPrice(pricesSection, "BLAST_FURNACE", 12.0, 7000, 20000.0, 0.20, true);
-		createPrice(pricesSection, "LECTERN", 7.0, 10000, 35000.0, 0.20, true);
-		createPrice(pricesSection, "COMPOSTER", 2.0, 15000, 50000.0, 0.20, true);
-		createPrice(pricesSection, "OAK_TRAPDOOR", 1.1, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "OAK_FENCE", 0.9, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "OAK_DOOR", 1.2, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "STONE_BUTTON", 0.3, 25000, 80000.0, 0.10, true);
-		createPrice(pricesSection, "LEVER", 0.5, 25000, 80000.0, 0.10, true);
-		createPrice(pricesSection, "REDSTONE_TORCH", 1.2, 15000, 50000.0, 0.20, true);
-		createPrice(pricesSection, "OAK_SIGN", 0.8, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "OAK_STAIRS", 0.7, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "STONE_STAIRS", 0.9, 20000, 60000.0, 0.15, true);
-		createPrice(pricesSection, "STONE_SLAB", 0.4, 25000, 70000.0, 0.10, true);
-		createPrice(pricesSection, "OAK_SLAB", 0.3, 25000, 70000.0, 0.10, true);
-		createPrice(pricesSection, "STICK", 0.2, 30000, 90000.0, 0.10, true);
-		createPrice(pricesSection, "BOOKSHELF", 12.0, 6000, 20000.0, 0.25, true);
-		createPrice(pricesSection, "ITEM_FRAME", 4.0, 12000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "PAINTING", 3.0, 12000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "BOOK", 4.0, 15000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "MINECART", 12.0, 7000, 20000.0, 0.20, true);
-		createPrice(pricesSection, "CHEST_MINECART", 14.0, 6000, 20000.0, 0.20, true);
-		createPrice(pricesSection, "OAK_PRESSURE_PLATE", 0.6, 22000, 70000.0, 0.10, true);
-		createPrice(pricesSection, "STONE_PRESSURE_PLATE", 0.6, 22000, 70000.0, 0.10, true);
-		createPrice(pricesSection, "CAMPFIRE", 4.0, 10000, 30000.0, 0.20, true);
-		createPrice(pricesSection, "LANTERN", 6.0, 8000, 25000.0, 0.20, true);
-		createPrice(pricesSection, "CHAIN", 2.0, 15000, 40000.0, 0.20, true);
-		createPrice(pricesSection, "ANVIL", 30.0, 3000, 10000.0, 0.30, true);
-		createPrice(pricesSection, "GRINDSTONE", 4.0, 12000, 30000.0, 0.20, true);
-		createPrice(pricesSection, "SMITHING_TABLE", 5.0, 12000, 30000.0, 0.20, true);
-		createPrice(pricesSection, "CRAFTING_TABLE", 1.0, 20000, 60000.0, 0.10, true);
-		createPrice(pricesSection, "REDSTONE", 2.5, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "COAL", 2.0, 18000, 60000.0, 0.20, false);
-		createPrice(pricesSection, "COPPER_INGOT", 8.0, 9000, 20000.0, 0.30, false);
-		createPrice(pricesSection, "EMERALD", 200.0, 1500, 4000.0, 0.40, false);
-		createPrice(pricesSection, "LAPIS_LAZULI", 6.0, 10000, 25000.0, 0.25, false);
-		createPrice(pricesSection, "QUARTZ", 5.0, 12000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "AMETHYST_SHARD", 15.0, 6000, 10000.0, 0.30, false);
-		createPrice(pricesSection, "STRING", 2.0, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "BONE", 2.0, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "GUNPOWDER", 4.0, 12000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "ROTTEN_FLESH", 1.0, 20000, 50000.0, 0.15, false);
-		createPrice(pricesSection, "SPIDER_EYE", 3.0, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "ENDER_PEARL", 15.0, 8000, 15000.0, 0.30, false);
-		createPrice(pricesSection, "LEATHER", 6.0, 12000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "RABBIT_HIDE", 4.0, 12000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "FEATHER", 3.0, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "SUGAR_CANE", 2.0, 20000, 60000.0, 0.15, false);
-		createPrice(pricesSection, "MELON_SLICE", 1.2, 20000, 60000.0, 0.15, false);
-		createPrice(pricesSection, "PUMPKIN", 3.0, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "BEETROOT", 3.0, 18000, 50000.0, 0.15, false);
-		createPrice(pricesSection, "BEETROOT_SEEDS", 1.0, 22000, 70000.0, 0.10, false);
-		createPrice(pricesSection, "COCOA_BEANS", 2.5, 18000, 50000.0, 0.15, false);
-		createPrice(pricesSection, "NETHER_WART", 4.0, 15000, 40000.0, 0.20, false);
-		createPrice(pricesSection, "SWEET_BERRIES", 2.0, 20000, 60000.0, 0.15, false);
-		createPrice(pricesSection, "BAMBOO", 0.8, 25000, 80000.0, 0.10, false);
-		createPrice(pricesSection, "COD", 5.0, 12000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "SALMON", 5.0, 12000, 30000.0, 0.20, false);
-		createPrice(pricesSection, "PUFFERFISH", 6.0, 10000, 25000.0, 0.20, false);
-		createPrice(pricesSection, "TROPICAL_FISH", 6.0, 10000, 25000.0, 0.20, false);
-		createPrice(pricesSection, "TAG:ORE", 0.0, 1.0, 50000.0, 0.30, false);
-		createPrice(pricesSection, "TAG:CROP", 0.0, 1.0, 60000.0, 0.20, false);
-		createPrice(pricesSection, "TAG:MOB", 0.0, 1.0, 50000.0, 0.20, false);
-		createPrice(pricesSection, "TAG:INFRA", 0.0, 1.0, 70000.0, 0.15, false);
+		YamlConfiguration bands = this.priceBands == null ? buildDefaultPriceBands() : this.priceBands;
+		PriceBandTable bandTable = new PriceBandTable(bands);
+		PriceGenerator generator = new PriceGenerator(new com.daytonjwatson.ledger.market.ItemTagService(), bandTable);
+		YamlConfiguration yaml = generator.generate();
 		ConfigurationSection mobsSection = yaml.createSection("mobPrices");
 		createPrice(mobsSection, "entity:ZOMBIE", 12.0, 5000, 0.0, 0.0, false);
 		createPrice(mobsSection, "entity:SKELETON", 14.0, 5000, 0.0, 0.0, false);
@@ -199,6 +135,104 @@ public class ConfigManager {
 		entry.set("baseline", baseline);
 		entry.set("rho", rho);
 		entry.set("infra", infra);
+	}
+
+	private void writeDefaultPriceBands(File file) throws IOException {
+		writeYaml(file, buildDefaultPriceBands());
+	}
+
+	private YamlConfiguration buildDefaultPriceBands() {
+		YamlConfiguration yaml = new YamlConfiguration();
+		ConfigurationSection bandsSection = yaml.createSection("bands");
+		writeBand(bandsSection, "TRASH_COMMON", 0.05, 0.35, 200000, 0.9, 0.0);
+		writeBand(bandsSection, "COMMON_BUILD", 0.25, 1.25, 120000, 0.9, 0.0);
+		writeBand(bandsSection, "COMMON_NATURAL", 0.10, 0.80, 90000, 0.9, 0.0);
+		writeBand(bandsSection, "ORE_COMMON", 1.5, 4.0, 30000, 1.0, 0.0);
+		writeBand(bandsSection, "ORE_MID", 4.0, 18.0, 8000, 1.15, 0.0);
+		writeBand(bandsSection, "ORE_RARE", 18.0, 65.0, 600, 1.35, 0.0);
+		writeBand(bandsSection, "NETHER_RARE", 40.0, 200.0, 150, 1.45, 0.0);
+		writeBand(bandsSection, "END_RARE", 20.0, 120.0, 250, 1.35, 0.0);
+		writeBand(bandsSection, "MOB_COMMON", 0.25, 2.5, 20000, 1.1, 0.0);
+		writeBand(bandsSection, "MOB_VALUABLE", 4.0, 60.0, 800, 1.3, 0.0);
+		writeBand(bandsSection, "FARM_COMMON", 0.25, 2.0, 25000, 1.05, 0.0);
+		writeBand(bandsSection, "FARM_VALUABLE", 2.0, 20.0, 5000, 1.2, 0.0);
+		writeBand(bandsSection, "UTILITY_INFRA", 1.0, 12.0, 2000, 1.35, 0.0);
+		writeBand(bandsSection, "REDSTONE_INFRA", 1.0, 25.0, 250, 1.55, 0.0);
+		writeBand(bandsSection, "CONTAINER", 0.0, 0.2, 5000, 1.3, 0.0);
+		writeBand(bandsSection, "ENCHANTED", 0.0, 0.0, 1, 1.0, 0.0);
+		writeBand(bandsSection, "UNSELLABLE", 0.0, 0.0, 1, 1.0, 0.0);
+		return yaml;
+	}
+
+	private void writeBand(ConfigurationSection section, String tag, double minPrice, double maxPrice, double cap, double sigma, double baseline) {
+		ConfigurationSection entry = section.createSection(tag);
+		entry.set("minPrice", minPrice);
+		entry.set("maxPrice", maxPrice);
+		entry.set("cap", cap);
+		entry.set("sigma", sigma);
+		entry.set("baseline", baseline);
+	}
+
+	private void writeDefaultOverrides(File file) throws IOException {
+		YamlConfiguration yaml = new YamlConfiguration();
+		ConfigurationSection overridesSection = yaml.createSection("overrides");
+		writeOverride(overridesSection, "ENCHANTED_BOOK", 0.0, true);
+		writeOverride(overridesSection, "WRITTEN_BOOK", 0.0, true);
+		writeOverride(overridesSection, "FILLED_MAP", 0.0, true);
+		writeOverride(overridesSection, "PLAYER_HEAD", 0.0, true);
+		writeOverride(overridesSection, "POTION", 0.0, true);
+		writeOverride(overridesSection, "SPLASH_POTION", 0.0, true);
+		writeOverride(overridesSection, "LINGERING_POTION", 0.0, true);
+		writeOverride(overridesSection, "TIPPED_ARROW", 0.0, true);
+		writeOverride(overridesSection, "BUNDLE", 0.0, true);
+		writeOverride(overridesSection, "SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "WHITE_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "ORANGE_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "MAGENTA_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "LIGHT_BLUE_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "YELLOW_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "LIME_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "PINK_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "GRAY_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "LIGHT_GRAY_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "CYAN_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "PURPLE_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "BLUE_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "BROWN_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "GREEN_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "RED_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "BLACK_SHULKER_BOX", 0.0, true);
+		writeOverride(overridesSection, "BARRIER", 0.0, true);
+		writeOverride(overridesSection, "COMMAND_BLOCK", 0.0, true);
+		writeOverride(overridesSection, "CHAIN_COMMAND_BLOCK", 0.0, true);
+		writeOverride(overridesSection, "REPEATING_COMMAND_BLOCK", 0.0, true);
+		writeOverride(overridesSection, "STRUCTURE_BLOCK", 0.0, true);
+		writeOverride(overridesSection, "STRUCTURE_VOID", 0.0, true);
+		writeOverride(overridesSection, "JIGSAW", 0.0, true);
+		writeOverride(overridesSection, "LIGHT", 0.0, true);
+		writeOverride(overridesSection, "DEBUG_STICK", 0.0, true);
+		writeOverride(overridesSection, "BAMBOO", 0.05, false);
+		writeOverride(overridesSection, "KELP", 0.05, false);
+		writeOverride(overridesSection, "SUGAR_CANE", 0.05, false);
+		writeOverride(overridesSection, "CACTUS", 0.05, false);
+		ConfigurationSection ironOverride = overridesSection.createSection("IRON_INGOT");
+		ironOverride.set("base", 1.5);
+		ironOverride.set("cap", 15000.0);
+		ConfigurationSection debrisOverride = overridesSection.createSection("ANCIENT_DEBRIS");
+		debrisOverride.set("base", 120.0);
+		debrisOverride.set("cap", 80.0);
+		ConfigurationSection scrapOverride = overridesSection.createSection("NETHERITE_SCRAP");
+		scrapOverride.set("base", 80.0);
+		scrapOverride.set("cap", 60.0);
+		writeYaml(file, yaml);
+	}
+
+	private void writeOverride(ConfigurationSection section, String key, double base, boolean unsellable) {
+		ConfigurationSection entry = section.createSection(key);
+		entry.set("base", base);
+		if (unsellable) {
+			entry.set("unsellable", true);
+		}
 	}
 
 	private void writeDefaultUpgrades(File file) throws IOException {

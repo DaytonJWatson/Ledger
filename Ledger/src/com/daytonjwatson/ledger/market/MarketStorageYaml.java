@@ -66,7 +66,8 @@ public class MarketStorageYaml {
 		yaml.set("generatedAt", System.currentTimeMillis());
 		ConfigurationSection itemsSection = yaml.createSection("market.items");
 		for (Map.Entry<String, MarketState.ItemState> entry : marketState.getItems().entrySet()) {
-			ConfigurationSection itemSection = itemsSection.createSection(entry.getKey());
+			String normalizedKey = com.daytonjwatson.ledger.util.ItemKeyUtil.normalizeKey(entry.getKey());
+			ConfigurationSection itemSection = itemsSection.createSection(normalizedKey == null ? entry.getKey() : normalizedKey);
 			itemSection.set("s", entry.getValue().getSoldAccumulator());
 			itemSection.set("lastUpdate", entry.getValue().getLastUpdate());
 			itemSection.set("minedTotal", entry.getValue().getMinedTotal());

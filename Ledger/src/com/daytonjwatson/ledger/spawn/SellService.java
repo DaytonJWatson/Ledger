@@ -2,6 +2,8 @@ package com.daytonjwatson.ledger.spawn;
 
 import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.market.MarketService;
+import com.daytonjwatson.ledger.market.SellValidator;
+import com.daytonjwatson.ledger.util.ItemKeyUtil;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -13,10 +15,12 @@ import org.bukkit.inventory.ItemStack;
 public class SellService {
 	private final MarketService marketService;
 	private final MoneyService moneyService;
+	private final SellValidator sellValidator;
 
-	public SellService(MarketService marketService, MoneyService moneyService) {
+	public SellService(MarketService marketService, MoneyService moneyService, SellValidator sellValidator) {
 		this.marketService = marketService;
 		this.moneyService = moneyService;
+		this.sellValidator = sellValidator;
 	}
 
 	public SellOutcome sellInventory(Player player) {
@@ -24,6 +28,9 @@ public class SellService {
 		Map<Material, Integer> sellableCounts = new HashMap<>();
 		for (ItemStack item : items) {
 			if (item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			if (!sellValidator.validate(item).sellable()) {
 				continue;
 			}
 			if (marketService.getSellPrice(item) <= 0.0) {
@@ -39,13 +46,16 @@ public class SellService {
 			if (item == null || item.getType() == Material.AIR) {
 				continue;
 			}
+			if (!sellValidator.validate(item).sellable()) {
+				continue;
+			}
 			double value = marketService.getSellPrice(player, item, distinctTypes);
 			if (value <= 0.0) {
 				continue;
 			}
 			total += Math.round(value * item.getAmount());
 			soldCount += item.getAmount();
-			marketService.applySale(item.getType().name(), item.getAmount());
+			marketService.applySale(ItemKeyUtil.toKey(item.getType()), item.getAmount());
 			items[i] = null;
 		}
 		player.getInventory().setContents(items);
@@ -63,6 +73,9 @@ public class SellService {
 			if (item == null || item.getType() == Material.AIR) {
 				continue;
 			}
+			if (!sellValidator.validate(item).sellable()) {
+				continue;
+			}
 			if (marketService.getSellPrice(item) <= 0.0) {
 				continue;
 			}
@@ -76,13 +89,16 @@ public class SellService {
 			if (item == null || item.getType() == Material.AIR) {
 				continue;
 			}
+			if (!sellValidator.validate(item).sellable()) {
+				continue;
+			}
 			double value = marketService.getSellPrice(player, item, distinctTypes);
 			if (value <= 0.0) {
 				continue;
 			}
 			total += Math.round(value * item.getAmount());
 			soldCount += item.getAmount();
-			marketService.applySale(item.getType().name(), item.getAmount());
+			marketService.applySale(ItemKeyUtil.toKey(item.getType()), item.getAmount());
 			inventory.setItem(slot, null);
 		}
 		if (total <= 0) {
@@ -97,12 +113,15 @@ public class SellService {
 		if (item == null || item.getType() == Material.AIR) {
 			return SellOutcome.noItem();
 		}
+		if (!sellValidator.validate(item).sellable()) {
+			return SellOutcome.noSellable();
+		}
 		double value = marketService.getSellPrice(player, item);
 		if (value <= 0.0) {
 			return SellOutcome.noSellable();
 		}
 		long total = Math.round(value * item.getAmount());
-		marketService.applySale(item.getType().name(), item.getAmount());
+		marketService.applySale(ItemKeyUtil.toKey(item.getType()), item.getAmount());
 		player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
 		moneyService.addCarried(player, total);
 		return SellOutcome.sold(total, item.getAmount());
