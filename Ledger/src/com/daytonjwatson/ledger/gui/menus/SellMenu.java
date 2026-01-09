@@ -5,12 +5,15 @@ import com.daytonjwatson.ledger.gui.LedgerHolder;
 import com.daytonjwatson.ledger.gui.LedgerMenu;
 import com.daytonjwatson.ledger.gui.MenuId;
 import com.daytonjwatson.ledger.market.MarketService;
+import com.daytonjwatson.ledger.market.SellValidator;
 import com.daytonjwatson.ledger.spawn.SellService;
 import com.daytonjwatson.ledger.spawn.SellService.SellOutcome;
 import com.daytonjwatson.ledger.spawn.SellService.SellStatus;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -32,12 +35,14 @@ public class SellMenu implements LedgerMenu {
 	private final GuiManager guiManager;
 	private final MarketService marketService;
 	private final SellService sellService;
+	private final SellValidator sellValidator;
 	private final ItemStack fillerItem;
 
-	public SellMenu(GuiManager guiManager, MarketService marketService, SellService sellService) {
+	public SellMenu(GuiManager guiManager, MarketService marketService, SellService sellService, SellValidator sellValidator) {
 		this.guiManager = guiManager;
 		this.marketService = marketService;
 		this.sellService = sellService;
+		this.sellValidator = sellValidator;
 		this.fillerItem = createFillerItem();
 	}
 
@@ -114,6 +119,11 @@ public class SellMenu implements LedgerMenu {
 		InventorySummary summary = summarizeInventory(inventory);
 		lore.add(ChatColor.GRAY + "Sell Slot Value: " + ChatColor.GOLD + "$" + formatMoney(summary.inventoryValue()));
 		lore.add(ChatColor.GRAY + "Sellable Types: " + ChatColor.YELLOW + summary.distinctSellableTypes());
+		if (!summary.unsellableReasons().isEmpty()) {
+			for (Map.Entry<String, Integer> entry : summary.unsellableReasons().entrySet()) {
+				lore.add(ChatColor.RED + "Unsellable (" + entry.getKey() + "): " + entry.getValue());
+			}
+		}
 		lore.add(ChatColor.DARK_GRAY + "Place items below to sell.");
 		meta.setLore(lore);
 		item.setItemMeta(meta);
@@ -123,9 +133,15 @@ public class SellMenu implements LedgerMenu {
 	private InventorySummary summarizeInventory(Inventory inventory) {
 		long total = 0L;
 		Set<Material> distinctTypes = new HashSet<>();
+		Map<String, Integer> unsellableReasons = new LinkedHashMap<>();
 		for (int slot : SELL_SLOTS) {
 			ItemStack item = inventory.getItem(slot);
 			if (item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			SellValidator.SellResult result = sellValidator.validate(item);
+			if (!result.sellable()) {
+				unsellableReasons.merge(result.reason(), item.getAmount(), Integer::sum);
 				continue;
 			}
 			double price = marketService.getSellPrice(item);
@@ -135,7 +151,7 @@ public class SellMenu implements LedgerMenu {
 			distinctTypes.add(item.getType());
 			total += Math.round(price * item.getAmount());
 		}
-		return new InventorySummary(total, distinctTypes.size());
+		return new InventorySummary(total, distinctTypes.size(), unsellableReasons);
 	}
 
 	private ItemStack createFillerItem() {
@@ -166,7 +182,7 @@ public class SellMenu implements LedgerMenu {
 		return String.format("%,d", value);
 	}
 
-	private record InventorySummary(long inventoryValue, int distinctSellableTypes) {
+	private record InventorySummary(long inventoryValue, int distinctSellableTypes, Map<String, Integer> unsellableReasons) {
 	}
 
 	private static Set<Integer> buildSellSlots() {

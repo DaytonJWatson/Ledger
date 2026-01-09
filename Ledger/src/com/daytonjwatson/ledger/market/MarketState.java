@@ -16,7 +16,11 @@ public class MarketState {
 	}
 
 	public ItemState getOrCreateItem(String key) {
-		return items.computeIfAbsent(key.toUpperCase(), ignored -> new ItemState());
+		String normalized = com.daytonjwatson.ledger.util.ItemKeyUtil.normalizeKey(key);
+		if (normalized == null) {
+			normalized = key == null ? "" : key.toUpperCase();
+		}
+		return items.computeIfAbsent(normalized, ignored -> new ItemState());
 	}
 
 	public MobState getOrCreateMob(String key) {

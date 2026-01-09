@@ -40,4 +40,15 @@ public class ToolMetaService {
 		meta.getPersistentDataContainer().set(repairKey, PersistentDataType.INTEGER, Math.max(0, count));
 		item.setItemMeta(meta);
 	}
+
+	public boolean hasRepairData(ItemStack item) {
+		if (item == null) {
+			return false;
+		}
+		ItemMeta meta = item.getItemMeta();
+		if (meta == null) {
+			return false;
+		}
+		return meta.getPersistentDataContainer().has(repairKey, PersistentDataType.INTEGER);
+	}
 }
