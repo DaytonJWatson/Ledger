@@ -26,6 +26,9 @@ public class SellValidator {
 		if (item == null || item.getType() == Material.AIR) {
 			return SellResult.reject("Empty");
 		}
+		if (isTool(item.getType())) {
+			return SellResult.reject("Tool");
+		}
 		ItemMeta meta = item.getItemMeta();
 		if (meta != null) {
 			if (hasEnchants(meta) && !isWhitelistedTool(item)) {
@@ -52,6 +55,26 @@ public class SellValidator {
 			return SellResult.reject("Unsellable");
 		}
 		return SellResult.allowed();
+	}
+
+	private boolean isTool(Material material) {
+		if (material == null) {
+			return false;
+		}
+		String name = material.name();
+		return name.endsWith("_SWORD")
+			|| name.endsWith("_PICKAXE")
+			|| name.endsWith("_AXE")
+			|| name.endsWith("_SHOVEL")
+			|| name.endsWith("_HOE")
+			|| material == Material.BOW
+			|| material == Material.CROSSBOW
+			|| material == Material.TRIDENT
+			|| material == Material.SHIELD
+			|| material == Material.FISHING_ROD
+			|| material == Material.FLINT_AND_STEEL
+			|| material == Material.SHEARS
+			|| material == Material.BRUSH;
 	}
 
 	private boolean hasEnchants(ItemMeta meta) {
