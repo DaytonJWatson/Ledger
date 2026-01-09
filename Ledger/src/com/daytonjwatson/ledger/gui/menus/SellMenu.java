@@ -118,7 +118,7 @@ public class SellMenu implements LedgerMenu {
 		List<String> lore = new ArrayList<>();
 		InventorySummary summary = summarizeInventory(inventory);
 		lore.add(ChatColor.GRAY + "Sell Slot Value: " + ChatColor.GOLD + "$" + formatMoney(summary.inventoryValue()));
-		lore.add(ChatColor.GRAY + "After Market Change: " + ChatColor.GOLD + "$" + formatMoney(summary.afterMarketValue()));
+		lore.add(ChatColor.GRAY + "Market Change: " + formatMarketDelta(summary.marketDelta()));
 		lore.add(ChatColor.GRAY + "Sellable Types: " + ChatColor.YELLOW + summary.distinctSellableTypes());
 		if (!summary.unsellableReasons().isEmpty()) {
 			for (Map.Entry<String, Integer> entry : summary.unsellableReasons().entrySet()) {
@@ -157,7 +157,8 @@ public class SellMenu implements LedgerMenu {
 			sellableQuantities.merge(item.getType(), item.getAmount(), Integer::sum);
 		}
 		long afterMarketValue = marketService.getProjectedSellValueAfterMarketChange(sellableItems, sellableQuantities);
-		return new InventorySummary(total, afterMarketValue, distinctTypes.size(), unsellableReasons);
+		long marketDelta = afterMarketValue - total;
+		return new InventorySummary(total, marketDelta, distinctTypes.size(), unsellableReasons);
 	}
 
 	private ItemStack createFillerItem() {
@@ -188,7 +189,13 @@ public class SellMenu implements LedgerMenu {
 		return String.format("%,d", value);
 	}
 
-	private record InventorySummary(long inventoryValue, long afterMarketValue, int distinctSellableTypes,
+	private String formatMarketDelta(long value) {
+		String formatted = formatMoney(Math.abs(value));
+		String prefix = value >= 0 ? ChatColor.GREEN + "+$" : ChatColor.RED + "-$";
+		return prefix + formatted;
+	}
+
+	private record InventorySummary(long inventoryValue, long marketDelta, int distinctSellableTypes,
 									Map<String, Integer> unsellableReasons) {
 	}
 
