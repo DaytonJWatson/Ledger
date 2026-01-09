@@ -27,6 +27,7 @@ import com.daytonjwatson.ledger.market.ScarcityWindowService;
 import com.daytonjwatson.ledger.market.SellValidator;
 import com.daytonjwatson.ledger.mobs.MobKillListener;
 import com.daytonjwatson.ledger.mobs.MobPayoutService;
+import com.daytonjwatson.ledger.mining.AutoSmeltListener;
 import com.daytonjwatson.ledger.spawn.AnimalSellListener;
 import com.daytonjwatson.ledger.spawn.AnimalSellService;
 import com.daytonjwatson.ledger.spawn.SellService;
@@ -115,6 +116,7 @@ public class LedgerPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(loreValueService, this);
 		Bukkit.getPluginManager().registerEvents(new EnchantBlockListener(), this);
 		Bukkit.getPluginManager().registerEvents(new SilkTouchMarkListener(silkTouchMarkService), this);
+		Bukkit.getPluginManager().registerEvents(new AutoSmeltListener(upgradeService), this);
 		Bukkit.getPluginManager().registerEvents(new GuiListener(guiManager), this);
 
 		getCommand("sell").setExecutor(new MenuCommand(guiManager, MenuId.SELL));
