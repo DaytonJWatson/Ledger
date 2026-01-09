@@ -116,7 +116,7 @@ public class SellMenu implements LedgerMenu {
 		}
 		meta.setDisplayName(ChatColor.YELLOW + "Sell Summary");
 		List<String> lore = new ArrayList<>();
-		InventorySummary summary = summarizeInventory(player, inventory);
+		InventorySummary summary = summarizeInventory(inventory);
 		lore.add(ChatColor.GRAY + "Sell Slot Value: " + ChatColor.GOLD + "$" + formatMoney(summary.inventoryValue()));
 		lore.add(ChatColor.GRAY + "Market Change: " + formatMarketDelta(summary.marketDelta()));
 		lore.add(ChatColor.GRAY + "Sellable Types: " + ChatColor.YELLOW + summary.distinctSellableTypes());
@@ -131,7 +131,7 @@ public class SellMenu implements LedgerMenu {
 		return item;
 	}
 
-	private InventorySummary summarizeInventory(Player player, Inventory inventory) {
+	private InventorySummary summarizeInventory(Inventory inventory) {
 		long total = 0L;
 		Set<Material> distinctTypes = new HashSet<>();
 		Map<String, Integer> unsellableReasons = new LinkedHashMap<>();
@@ -152,20 +152,13 @@ public class SellMenu implements LedgerMenu {
 				continue;
 			}
 			distinctTypes.add(item.getType());
+			total += Math.round(price * item.getAmount());
 			sellableItems.add(item);
 			sellableQuantities.merge(item.getType(), item.getAmount(), Integer::sum);
 		}
-		int distinctTypeCount = distinctTypes.size();
-		for (ItemStack item : sellableItems) {
-			double price = marketService.getSellPrice(player, item, distinctTypeCount);
-			if (price <= 0.0) {
-				continue;
-			}
-			total += Math.round(price * item.getAmount());
-		}
-		long afterMarketValue = marketService.getProjectedSellValueAfterMarketChange(player, distinctTypeCount, sellableItems, sellableQuantities);
+		long afterMarketValue = marketService.getProjectedSellValueAfterMarketChange(sellableItems, sellableQuantities);
 		long marketDelta = afterMarketValue - total;
-		return new InventorySummary(total, marketDelta, distinctTypeCount, unsellableReasons);
+		return new InventorySummary(total, marketDelta, distinctTypes.size(), unsellableReasons);
 	}
 
 	private ItemStack createFillerItem() {
