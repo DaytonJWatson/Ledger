@@ -21,9 +21,14 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
 public class SellMenu implements LedgerMenu {
 	private static final int MENU_SIZE = 54;
+	private static final int SUMMARY_SLOT = 4;
+	private static final int SELL_BUTTON_SLOT = 49;
+	private static final int BACK_BUTTON_SLOT = 53;
+	private static final Set<Integer> SELL_SLOTS = buildSellSlots();
 	private final GuiManager guiManager;
 	private final MarketService marketService;
 	private final SellService sellService;
@@ -47,49 +52,58 @@ public class SellMenu implements LedgerMenu {
 		for (int slot = 0; slot < 9; slot++) {
 			inventory.setItem(slot, fillerItem);
 		}
-		inventory.setItem(4, createSummaryItem(player));
-		inventory.setItem(20, createButton(Material.LIME_DYE, ChatColor.GREEN + "Sell Hand", ChatColor.GRAY + "Sell your held stack"));
-		inventory.setItem(24, createButton(Material.EMERALD, ChatColor.GREEN + "Sell Inventory", ChatColor.GRAY + "Sell all sellable items"));
-		inventory.setItem(31, createButton(Material.BARRIER, ChatColor.RED + "Back", ChatColor.GRAY + "Return to the hub"));
+		for (int slot = 45; slot < MENU_SIZE; slot++) {
+			inventory.setItem(slot, fillerItem);
+		}
+		inventory.setItem(SUMMARY_SLOT, createSummaryItem(player, inventory));
+		inventory.setItem(SELL_BUTTON_SLOT, createButton(Material.EMERALD, ChatColor.GREEN + "Sell Items", ChatColor.GRAY + "Sell items placed above"));
+		inventory.setItem(BACK_BUTTON_SLOT, createButton(Material.BARRIER, ChatColor.RED + "Back", ChatColor.GRAY + "Return to the hub"));
 		return inventory;
 	}
 
 	@Override
 	public void onClick(Player player, int slot, ItemStack clicked, ClickType type, InventoryClickEvent event) {
-		switch (slot) {
-			case 20 -> handleSellHand(player);
-			case 24 -> handleSellInventory(player);
-			case 31 -> guiManager.open(MenuId.HUB, player);
-			default -> {
-			}
+		Inventory topInventory = event.getView().getTopInventory();
+		if (slot == SELL_BUTTON_SLOT) {
+			event.setCancelled(true);
+			handleSellItems(player, topInventory);
+			return;
+		}
+		if (slot == BACK_BUTTON_SLOT) {
+			event.setCancelled(true);
+			guiManager.open(MenuId.HUB, player);
+			return;
+		}
+		if (slot < MENU_SIZE && !SELL_SLOTS.contains(slot)) {
+			event.setCancelled(true);
+			return;
+		}
+		if (slot < MENU_SIZE || event.isShiftClick()) {
+			updateSummaryLater(player, topInventory);
 		}
 	}
 
-	private void handleSellHand(Player player) {
-		SellOutcome outcome = sellService.sellHand(player);
-		if (outcome.getStatus() == SellStatus.NO_ITEM) {
-			player.sendMessage(ChatColor.RED + "Hold an item to sell.");
-			return;
-		}
+	@Override
+	public boolean cancelAllClicks() {
+		return false;
+	}
+
+	@Override
+	public void onClose(Player player, Inventory inventory) {
+		returnUnsoldItems(player, inventory);
+	}
+
+	private void handleSellItems(Player player, Inventory inventory) {
+		SellOutcome outcome = sellService.sellInventory(player, inventory, SELL_SLOTS);
 		if (outcome.getStatus() == SellStatus.NO_SELLABLE) {
-			player.sendMessage(ChatColor.RED + "No sellable items.");
+			player.sendMessage(ChatColor.RED + "No sellable items in the sell slots.");
 			return;
 		}
 		player.sendMessage(ChatColor.GREEN + "Sold " + outcome.getSoldCount() + " items for $" + outcome.getTotal() + ".");
-		guiManager.open(MenuId.SELL, player);
+		inventory.setItem(SUMMARY_SLOT, createSummaryItem(player, inventory));
 	}
 
-	private void handleSellInventory(Player player) {
-		SellOutcome outcome = sellService.sellInventory(player);
-		if (outcome.getStatus() == SellStatus.NO_SELLABLE) {
-			player.sendMessage(ChatColor.RED + "No sellable items.");
-			return;
-		}
-		player.sendMessage(ChatColor.GREEN + "Sold " + outcome.getSoldCount() + " items for $" + outcome.getTotal() + ".");
-		guiManager.open(MenuId.SELL, player);
-	}
-
-	private ItemStack createSummaryItem(Player player) {
+	private ItemStack createSummaryItem(Player player, Inventory inventory) {
 		ItemStack item = new ItemStack(Material.PAPER);
 		ItemMeta meta = item.getItemMeta();
 		if (meta == null) {
@@ -97,24 +111,20 @@ public class SellMenu implements LedgerMenu {
 		}
 		meta.setDisplayName(ChatColor.YELLOW + "Sell Summary");
 		List<String> lore = new ArrayList<>();
-		InventorySummary summary = summarizeInventory(player);
-		ItemStack hand = player.getInventory().getItemInMainHand();
-		long handValue = 0L;
-		if (hand != null && hand.getType() != Material.AIR) {
-			handValue = Math.round(marketService.getSellPrice(hand) * hand.getAmount());
-		}
-		lore.add(ChatColor.GRAY + "Inventory Value: " + ChatColor.GOLD + "$" + formatMoney(summary.inventoryValue()));
-		lore.add(ChatColor.GRAY + "Hand Value: " + ChatColor.GOLD + "$" + formatMoney(handValue));
+		InventorySummary summary = summarizeInventory(inventory);
+		lore.add(ChatColor.GRAY + "Sell Slot Value: " + ChatColor.GOLD + "$" + formatMoney(summary.inventoryValue()));
 		lore.add(ChatColor.GRAY + "Sellable Types: " + ChatColor.YELLOW + summary.distinctSellableTypes());
+		lore.add(ChatColor.DARK_GRAY + "Place items below to sell.");
 		meta.setLore(lore);
 		item.setItemMeta(meta);
 		return item;
 	}
 
-	private InventorySummary summarizeInventory(Player player) {
+	private InventorySummary summarizeInventory(Inventory inventory) {
 		long total = 0L;
 		Set<Material> distinctTypes = new HashSet<>();
-		for (ItemStack item : player.getInventory().getContents()) {
+		for (int slot : SELL_SLOTS) {
+			ItemStack item = inventory.getItem(slot);
 			if (item == null || item.getType() == Material.AIR) {
 				continue;
 			}
@@ -157,5 +167,30 @@ public class SellMenu implements LedgerMenu {
 	}
 
 	private record InventorySummary(long inventoryValue, int distinctSellableTypes) {
+	}
+
+	private static Set<Integer> buildSellSlots() {
+		Set<Integer> slots = new HashSet<>();
+		for (int slot = 9; slot < 45; slot++) {
+			slots.add(slot);
+		}
+		return slots;
+	}
+
+	private void updateSummaryLater(Player player, Inventory inventory) {
+		Bukkit.getScheduler().runTask(JavaPlugin.getProvidingPlugin(SellMenu.class), () -> {
+			inventory.setItem(SUMMARY_SLOT, createSummaryItem(player, inventory));
+		});
+	}
+
+	private void returnUnsoldItems(Player player, Inventory inventory) {
+		for (int slot : SELL_SLOTS) {
+			ItemStack item = inventory.getItem(slot);
+			if (item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			inventory.setItem(slot, null);
+			player.getInventory().addItem(item).values().forEach(remaining -> player.getWorld().dropItemNaturally(player.getLocation(), remaining));
+		}
 	}
 }
