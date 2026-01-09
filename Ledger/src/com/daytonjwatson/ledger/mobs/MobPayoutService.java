@@ -4,18 +4,23 @@ import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.config.PriceTable;
 import com.daytonjwatson.ledger.market.MarketState;
 import com.daytonjwatson.ledger.market.ScarcityWindowService;
+import com.daytonjwatson.ledger.upgrades.UpgradeService;
 import org.bukkit.entity.Player;
+
+import java.util.Locale;
 
 public class MobPayoutService {
 	private final ConfigManager configManager;
 	private final MarketState marketState;
 	private PriceTable priceTable;
 	private final ScarcityWindowService scarcityWindowService;
+	private final UpgradeService upgradeService;
 
-	public MobPayoutService(ConfigManager configManager, MarketState marketState, ScarcityWindowService scarcityWindowService) {
+	public MobPayoutService(ConfigManager configManager, MarketState marketState, ScarcityWindowService scarcityWindowService, UpgradeService upgradeService) {
 		this.configManager = configManager;
 		this.marketState = marketState;
 		this.scarcityWindowService = scarcityWindowService;
+		this.upgradeService = upgradeService;
 		this.priceTable = new PriceTable(configManager.getPrices(), configManager.getOverrides());
 	}
 
@@ -34,7 +39,7 @@ public class MobPayoutService {
 		double windowMultiplier = scarcityWindowService.getWindowMultiplier(player, mobKey, ScarcityWindowService.WindowContext.MOB);
 		double raw = entry.getBase() * supplyFactor * windowMultiplier;
 		double clamped = clamp(raw, entry.getBase() * entry.getMinFactor(), entry.getBase() * entry.getMaxFactor() * windowMultiplier);
-		return Math.max(0.0, clamped);
+		return Math.max(0.0, applySpecializationMultiplier(player, clamped));
 	}
 
 	public void recordKill(String mobKey) {
@@ -58,5 +63,35 @@ public class MobPayoutService {
 
 	private double clamp(double value, double min, double max) {
 		return Math.min(max, Math.max(min, value));
+	}
+
+	private double applySpecializationMultiplier(Player player, double payout) {
+		if (player == null) {
+			return payout;
+		}
+		String specialization = upgradeService.getSpecializationChoice(player.getUniqueId());
+		if (specialization == null || specialization.isBlank()) {
+			return payout;
+		}
+		int level = getSpecializationLevel(player.getUniqueId(), specialization);
+		if (level <= 0) {
+			return payout;
+		}
+		if ("HUNTER".equalsIgnoreCase(specialization)) {
+			return payout * (1.0 + (0.03 * level));
+		}
+		return payout * (1.0 - (0.015 * level));
+	}
+
+	private int getSpecializationLevel(java.util.UUID uuid, String specialization) {
+		if (specialization == null) {
+			return 0;
+		}
+		return switch (specialization.toUpperCase(Locale.ROOT)) {
+			case "MINER" -> upgradeService.getLevel(uuid, "spec_miner");
+			case "FARMER" -> upgradeService.getLevel(uuid, "spec_farmer");
+			case "HUNTER" -> upgradeService.getLevel(uuid, "spec_hunter");
+			default -> 0;
+		};
 	}
 }

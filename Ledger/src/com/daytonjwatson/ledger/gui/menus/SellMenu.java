@@ -9,6 +9,7 @@ import com.daytonjwatson.ledger.market.SellValidator;
 import com.daytonjwatson.ledger.spawn.SellService;
 import com.daytonjwatson.ledger.spawn.SellService.SellOutcome;
 import com.daytonjwatson.ledger.spawn.SellService.SellStatus;
+import com.daytonjwatson.ledger.util.ItemKeyUtil;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -134,7 +135,7 @@ public class SellMenu implements LedgerMenu {
 
 	private InventorySummary summarizeInventory(Player player, Inventory inventory) {
 		long total = 0L;
-		Set<Material> distinctTypes = new HashSet<>();
+		Set<String> distinctTypes = new HashSet<>();
 		Map<String, Integer> unsellableReasons = new LinkedHashMap<>();
 		List<ItemStack> sellableItems = new ArrayList<>();
 		Map<Material, Integer> sellableQuantities = new LinkedHashMap<>();
@@ -152,7 +153,7 @@ public class SellMenu implements LedgerMenu {
 			if (price <= 0.0) {
 				continue;
 			}
-			distinctTypes.add(item.getType());
+			distinctTypes.add(ItemKeyUtil.toKey(item.getType()));
 			total += Math.round(price * item.getAmount());
 			sellableItems.add(item);
 			sellableQuantities.merge(item.getType(), item.getAmount(), Integer::sum);
@@ -160,7 +161,7 @@ public class SellMenu implements LedgerMenu {
 		int distinctCount = distinctTypes.size();
 		long upgradeTotal = 0L;
 		for (ItemStack item : sellableItems) {
-			double price = marketService.getSellPrice(player, item, distinctCount);
+			double price = marketService.getSellPriceForInventory(player, item, distinctCount);
 			if (price <= 0.0) {
 				continue;
 			}

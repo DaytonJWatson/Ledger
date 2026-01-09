@@ -6,7 +6,6 @@ import java.util.List;
 public class UpgradeDefinition {
 	public enum Type {
 		LEVEL,
-		UNLOCK,
 		CHOICE
 	}
 

@@ -92,27 +92,37 @@ public class MarketService {
 	}
 
 	public double getSellPrice(Player player, ItemStack item) {
-		return getSellPrice(player, item, 1);
+		return getSellPrice(player, item, 1, false);
+	}
+
+	public double getSellPriceForInventory(Player player, ItemStack item, int distinctTypes) {
+		return getSellPrice(player, item, distinctTypes, true);
 	}
 
 	public double getSellPrice(Player player, ItemStack item, int distinctTypes) {
+		return getSellPrice(player, item, distinctTypes, false);
+	}
+
+	private double getSellPrice(Player player, ItemStack item, int distinctTypes, boolean applyLogistics) {
 		if (player == null) {
 			return getSellPrice(item);
 		}
-		double base = getSellPrice(item);
+		double base = getRefinedBasePrice(player.getUniqueId(), item);
 		if (base <= 0.0) {
 			return 0.0;
 		}
 		UUID uuid = player.getUniqueId();
 		int barterLevel = upgradeService.getLevel(uuid, "barter");
-		int logisticsLevel = upgradeService.getLevel(uuid, "logistics");
 		String specialization = upgradeService.getSpecializationChoice(uuid);
 		int specializationLevel = getSpecializationLevel(uuid, specialization);
 		double windowMultiplier = scarcityWindowService.getWindowMultiplier(player, ItemKeyUtil.toKey(item.getType()), ScarcityWindowService.WindowContext.MARKET);
 		double price = base * windowMultiplier;
 		price *= upgradeService.getBarterMultiplier(barterLevel);
-		price *= upgradeService.getLogisticsMultiplier(logisticsLevel, distinctTypes);
-		price *= upgradeService.getSpecializationMultiplier(specializationLevel, matchesSpecialization(specialization, item));
+		price *= getSpecializationMultiplier(specializationLevel, specialization, item);
+		if (applyLogistics) {
+			int logisticsLevel = upgradeService.getLevel(uuid, "logistics");
+			price *= upgradeService.getLogisticsMultiplier(logisticsLevel, distinctTypes);
+		}
 		double clamped = clamp(price, base * windowMultiplier * 0.2, base * windowMultiplier * 5.0);
 		return applyFatigueMultiplier(item, clamped);
 	}
@@ -125,7 +135,7 @@ public class MarketService {
 		if (item == null || item.getType() == Material.AIR || quantity <= 0) {
 			return 0.0;
 		}
-		double price = getSellPrice(player, item, distinctTypes);
+		double price = getSellPriceForInventory(player, item, distinctTypes);
 		if (price <= 0.0) {
 			return 0.0;
 		}
@@ -356,17 +366,119 @@ public class MarketService {
 		};
 	}
 
-	private boolean matchesSpecialization(String specialization, ItemStack item) {
-		if (specialization == null || item == null) {
-			return false;
+	private double getSpecializationMultiplier(int specializationLevel, String specialization, ItemStack item) {
+		if (specializationLevel <= 0 || specialization == null || item == null) {
+			return 1.0;
 		}
-		MarketItemTag category = MarketItemTag.fromMaterial(item.getType());
-		return switch (specialization.toUpperCase(Locale.ROOT)) {
-			case "MINER" -> category == MarketItemTag.ORE;
-			case "FARMER" -> category == MarketItemTag.CROP;
-			case "HUNTER" -> category == MarketItemTag.MOB;
+		SpecializationDomain itemDomain = getDomain(item.getType());
+		if (itemDomain == SpecializationDomain.NONE) {
+			return 1.0;
+		}
+		SpecializationDomain playerDomain = SpecializationDomain.fromChoice(specialization);
+		if (playerDomain == SpecializationDomain.NONE) {
+			return 1.0;
+		}
+		if (playerDomain == itemDomain) {
+			return 1.0 + (0.03 * specializationLevel);
+		}
+		return 1.0 - (0.015 * specializationLevel);
+	}
+
+	private double getRefinedBasePrice(UUID uuid, ItemStack item) {
+		if (item == null || item.getType() == Material.AIR) {
+			return 0.0;
+		}
+		double base = getSellPrice(ItemKeyUtil.toKey(item.getType()));
+		if (base <= 0.0) {
+			return 0.0;
+		}
+		base *= silkTouchMarkService.getSellMultiplier(item);
+		int refinementLevel = upgradeService.getHighestRefinementLevel(uuid);
+		if (refinementLevel <= 0) {
+			return base;
+		}
+		Material output = getRefinementOutput(item.getType());
+		if (output == null) {
+			return base;
+		}
+		double outputPrice = getSellPrice(ItemKeyUtil.toKey(output));
+		if (outputPrice <= 0.0) {
+			return base;
+		}
+		double feeMultiplier = 1.0 - getRefinementFee(refinementLevel);
+		return outputPrice * feeMultiplier * silkTouchMarkService.getSellMultiplier(item);
+	}
+
+	private double getRefinementFee(int level) {
+		return switch (Math.max(1, Math.min(5, level))) {
+			case 1 -> 0.15;
+			case 2 -> 0.12;
+			case 3 -> 0.09;
+			case 4 -> 0.07;
+			default -> 0.05;
+		};
+	}
+
+	private Material getRefinementOutput(Material input) {
+		if (input == null) {
+			return null;
+		}
+		return switch (input) {
+			case IRON_ORE, DEEPSLATE_IRON_ORE, RAW_IRON -> Material.IRON_INGOT;
+			case GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE, RAW_GOLD -> Material.GOLD_INGOT;
+			case COPPER_ORE, DEEPSLATE_COPPER_ORE, RAW_COPPER -> Material.COPPER_INGOT;
+			case ANCIENT_DEBRIS -> Material.NETHERITE_SCRAP;
+			default -> null;
+		};
+	}
+
+	private SpecializationDomain getDomain(Material material) {
+		if (material == null) {
+			return SpecializationDomain.NONE;
+		}
+		String name = material.name().toUpperCase(Locale.ROOT);
+		if (name.contains("_ORE") || name.startsWith("RAW_") || name.endsWith("_INGOT")) {
+			return SpecializationDomain.MINER;
+		}
+		if (isFarmerMaterial(material, name)) {
+			return SpecializationDomain.FARMER;
+		}
+		MarketItemTag tag = MarketItemTag.fromMaterial(material);
+		if (tag == MarketItemTag.MOB) {
+			return SpecializationDomain.HUNTER;
+		}
+		return SpecializationDomain.NONE;
+	}
+
+	private boolean isFarmerMaterial(Material material, String name) {
+		if (name.endsWith("_SEEDS") || name.endsWith("_SAPLING") || name.endsWith("_FLOWER")) {
+			return true;
+		}
+		return switch (material) {
+			case WHEAT, CARROT, POTATO, BEETROOT, BEETROOT_SEEDS, MELON_SLICE, PUMPKIN, SUGAR_CANE, BAMBOO,
+				 COCOA_BEANS, NETHER_WART, SWEET_BERRIES, KELP, CACTUS, WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS,
+				 BROWN_MUSHROOM, RED_MUSHROOM, VINE -> true;
 			default -> false;
 		};
+	}
+
+	private enum SpecializationDomain {
+		MINER,
+		FARMER,
+		HUNTER,
+		NONE;
+
+		static SpecializationDomain fromChoice(String choice) {
+			if (choice == null) {
+				return NONE;
+			}
+			return switch (choice.toUpperCase(Locale.ROOT)) {
+				case "MINER" -> MINER;
+				case "FARMER" -> FARMER;
+				case "HUNTER" -> HUNTER;
+				default -> NONE;
+			};
+		}
 	}
 
 	private double applyFatigueMultiplier(ItemStack item, double price) {

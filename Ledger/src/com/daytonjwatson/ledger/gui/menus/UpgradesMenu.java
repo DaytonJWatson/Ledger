@@ -138,7 +138,7 @@ public class UpgradesMenu implements LedgerMenu {
 		int level = upgradeService.getLevel(uuid, definition.getId());
 		boolean maxed = definition.getType() == UpgradeDefinition.Type.LEVEL && level >= definition.getMaxLevel();
 		boolean metPrereqs = upgradeService.meetsPrerequisites(uuid, definition.getId());
-		long nextCost = maxed ? -1L : definition.getNextCost(level);
+		long nextCost = definition.getNextCost(level);
 		boolean complete = maxed || (definition.getType() == UpgradeDefinition.Type.CHOICE && level > 0);
 		boolean purchasable = metPrereqs && !complete;
 
@@ -159,16 +159,8 @@ public class UpgradesMenu implements LedgerMenu {
 		} else {
 			lore.add(ChatColor.GRAY + "Choice: " + definition.getSpecializationChoice());
 		}
-		if (!complete) {
-			lore.add(ChatColor.GRAY + "Next: +" + upgradeService.getNextEffect(definition, uuid, level + 1));
-		} else {
-			lore.add(ChatColor.GRAY + "Fully upgraded");
-		}
-		if (complete) {
-			lore.add(ChatColor.GRAY + "Cost: \u2014");
-		} else {
-			lore.add(ChatColor.GRAY + "Cost: $" + nextCost);
-		}
+		lore.add(ChatColor.GRAY + "Next cost: $" + nextCost);
+		lore.add(ChatColor.GRAY + "Next effect: " + upgradeService.getNextEffect(definition, uuid, level + 1));
 		if (definition.getUnlocksVendorTier() > 0) {
 			lore.add(ChatColor.GRAY + "Unlocks vendor tier: " + definition.getUnlocksVendorTier());
 		}
@@ -176,8 +168,11 @@ public class UpgradesMenu implements LedgerMenu {
 			lore.add(ChatColor.GRAY + "Requires specialization: " + definition.getSpecializationRequirement());
 		}
 		if (!metPrereqs && !definition.getPrerequisites().isEmpty()) {
+			lore.add(ChatColor.RED + "Missing prerequisites:");
 			for (String prerequisite : definition.getPrerequisites()) {
-				lore.add(ChatColor.RED + prerequisite);
+				if (!upgradeService.hasUpgrade(uuid, prerequisite)) {
+					lore.add(ChatColor.RED + " - " + prerequisite);
+				}
 			}
 		}
 		lore.add(" ");

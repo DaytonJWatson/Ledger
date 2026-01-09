@@ -52,7 +52,6 @@ public class MoneyService {
 			balance.banked = entry.getLong("banked", 0L);
 			balance.carried = entry.getLong("carried", 0L);
 			balance.specializationChoice = entry.getString("specializationChoice", null);
-			balance.vendorTierUnlocked = entry.getInt("vendorTierUnlocked", 0);
 			ConfigurationSection upgradesSection = entry.getConfigurationSection("upgrades");
 			if (upgradesSection != null) {
 				for (String upgradeId : upgradesSection.getKeys(false)) {
@@ -73,9 +72,6 @@ public class MoneyService {
 			playerSection.set("carried", balance.carried);
 			if (balance.specializationChoice != null && !balance.specializationChoice.isBlank()) {
 				playerSection.set("specializationChoice", balance.specializationChoice);
-			}
-			if (balance.vendorTierUnlocked > 0) {
-				playerSection.set("vendorTierUnlocked", balance.vendorTierUnlocked);
 			}
 			ConfigurationSection upgradesSection = playerSection.createSection("upgrades");
 			for (Map.Entry<String, Integer> upgradeEntry : balance.upgrades.entrySet()) {
@@ -212,27 +208,44 @@ public class MoneyService {
 		return getBalance(uuid).specializationChoice;
 	}
 
+	public Map<String, Integer> getUpgradeLevels(UUID uuid) {
+		return Map.copyOf(getBalance(uuid).upgrades);
+	}
+
 	public void setSpecializationChoice(UUID uuid, String choice) {
 		getBalance(uuid).specializationChoice = choice;
-	}
-
-	public int getVendorTierUnlocked(UUID uuid) {
-		return getBalance(uuid).vendorTierUnlocked;
-	}
-
-	public void setVendorTierUnlocked(UUID uuid, int tier) {
-		getBalance(uuid).vendorTierUnlocked = Math.max(0, tier);
 	}
 
 	private PlayerBalance getBalance(UUID uuid) {
 		return balances.computeIfAbsent(uuid, ignored -> new PlayerBalance());
 	}
 
+	public void clampUpgradeLevels(Map<String, com.daytonjwatson.ledger.upgrades.UpgradeDefinition> definitions) {
+		if (definitions == null || definitions.isEmpty()) {
+			return;
+		}
+		for (PlayerBalance balance : balances.values()) {
+			for (Map.Entry<String, Integer> entry : balance.upgrades.entrySet()) {
+				String id = entry.getKey().toLowerCase();
+				com.daytonjwatson.ledger.upgrades.UpgradeDefinition definition = definitions.get(id);
+				if (definition == null) {
+					continue;
+				}
+				int maxLevel = definition.getMaxLevel();
+				int current = entry.getValue() == null ? 0 : entry.getValue();
+				if (current > maxLevel) {
+					entry.setValue(maxLevel);
+				} else if (current < 0) {
+					entry.setValue(0);
+				}
+			}
+		}
+	}
+
 	private static class PlayerBalance {
 		private long carried;
 		private long banked;
 		private String specializationChoice;
-		private int vendorTierUnlocked;
 		private final Map<String, Integer> upgrades = new ConcurrentHashMap<>();
 	}
 }

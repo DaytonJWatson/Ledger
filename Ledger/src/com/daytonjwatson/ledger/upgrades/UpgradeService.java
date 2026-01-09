@@ -3,6 +3,7 @@ package com.daytonjwatson.ledger.upgrades;
 import com.daytonjwatson.ledger.config.ConfigManager;
 import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.spawn.SpawnRegionService;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -26,6 +27,7 @@ public class UpgradeService {
 		this.moneyService = moneyService;
 		this.spawnRegionService = spawnRegionService;
 		loadDefinitions();
+		moneyService.clampUpgradeLevels(definitions);
 	}
 
 	public Map<String, UpgradeDefinition> getDefinitions() {
@@ -60,10 +62,10 @@ public class UpgradeService {
 			return true;
 		}
 		for (UpgradeDefinition definition : definitions.values()) {
-			if (definition.getUnlocksVendorTier() < tier) {
+			if (definition.getUnlocksVendorTier() != tier) {
 				continue;
 			}
-			if (hasUpgrade(uuid, definition.getId()) && meetsPrerequisites(uuid, definition)) {
+			if (getLevel(uuid, definition.getId()) >= 1) {
 				return true;
 			}
 		}
@@ -151,12 +153,6 @@ public class UpgradeService {
 		if (definition.getType() == UpgradeDefinition.Type.CHOICE) {
 			moneyService.setSpecializationChoice(uuid, definition.getSpecializationChoice());
 		}
-		if (definition.getUnlocksVendorTier() > 0) {
-			int currentTier = moneyService.getVendorTierUnlocked(uuid);
-			if (definition.getUnlocksVendorTier() > currentTier) {
-				moneyService.setVendorTierUnlocked(uuid, definition.getUnlocksVendorTier());
-			}
-		}
 		return PurchaseResult.success("Purchased " + definition.getName() + " for $" + cost + ". " + getNextEffect(definition, uuid, newLevel));
 	}
 
@@ -167,17 +163,17 @@ public class UpgradeService {
 		return switch (definition.getId().toLowerCase(Locale.ROOT)) {
 			case "barter" -> "Sell multiplier now x" + formatDecimal(getBarterMultiplier(level));
 			case "insurance" -> "Death loss reduction now " + Math.round(level * 2) + "%.";
-			case "logistics" -> "Diversity bonus now +" + Math.round(level * 4) + "% per extra type.";
-			case "spec_miner", "spec_farmer", "spec_hunter" -> "Specialization bonus now +" + Math.round(level * 3) + "% (penalty " + Math.round(level) + "%).";
+			case "logistics" -> "Sell inventory bonus now +" + Math.round(getLogisticsMaxBonusPercent(level)) + "% at full diversity.";
+			case "spec_miner", "spec_farmer", "spec_hunter" -> "Specialization bonus now +" + Math.round(level * 3) + "% (penalty " + Math.round(level * 1.5) + "%).";
 			default -> {
 				if (definition.getType() == UpgradeDefinition.Type.CHOICE) {
 					yield "Specialization set to " + definition.getSpecializationChoice().toUpperCase(Locale.ROOT) + ".";
 				}
 				if (definition.getUnlocksVendorTier() > 0) {
-					yield "Vendor tier unlocked.";
+					yield "Vendor tier " + definition.getUnlocksVendorTier() + " unlocked.";
 				}
 				if (definition.getRefinementLevel() > 0) {
-					yield "Refinement level " + definition.getRefinementLevel() + " unlocked (not implemented yet).";
+					yield "Refinement level " + definition.getRefinementLevel() + " unlocked.";
 				}
 				yield "";
 			}
@@ -200,19 +196,46 @@ public class UpgradeService {
 	}
 
 	public double getLogisticsMultiplier(int level, int distinctTypes) {
-		if (level <= 0 || distinctTypes <= 1) {
+		if (level <= 0 || distinctTypes <= 0) {
 			return 1.0;
 		}
-		double bonus = 0.04 * level * Math.max(0, distinctTypes - 1);
-		return clamp(1.0 + bonus, 1.0, 2.0);
+		int clampedLevel = Math.max(1, Math.min(5, level));
+		double maxBonus = switch (clampedLevel) {
+			case 1 -> 0.12;
+			case 2 -> 0.14;
+			case 3 -> 0.16;
+			case 4 -> 0.18;
+			default -> 0.20;
+		};
+		int targetDistinct = switch (clampedLevel) {
+			case 1 -> 12;
+			case 2 -> 11;
+			case 3 -> 10;
+			case 4 -> 9;
+			default -> 8;
+		};
+		double ratio = Math.min((double) distinctTypes / targetDistinct, 1.0);
+		return 1.0 + (maxBonus * ratio);
 	}
 
-	public double getSpecializationMultiplier(int level, boolean matches) {
-		if (level <= 0) {
-			return 1.0;
+	public int getHighestRefinementLevel(UUID uuid) {
+		int highest = 0;
+		for (UpgradeDefinition definition : definitions.values()) {
+			if (definition.getRefinementLevel() <= 0) {
+				continue;
+			}
+			if (getLevel(uuid, definition.getId()) <= 0) {
+				continue;
+			}
+			highest = Math.max(highest, definition.getRefinementLevel());
 		}
-		double bonus = matches ? 0.03 * level : -0.01 * level;
-		return clamp(1.0 + bonus, 0.5, 2.0);
+		return highest;
+	}
+
+	public void reloadDefinitions() {
+		definitions.clear();
+		loadDefinitions();
+		moneyService.clampUpgradeLevels(definitions);
 	}
 
 	private void loadDefinitions() {
@@ -220,39 +243,144 @@ public class UpgradeService {
 		if (root == null) {
 			return;
 		}
+		List<String> warnings = new ArrayList<>();
 		for (String key : root.getKeys(false)) {
 			ConfigurationSection section = root.getConfigurationSection(key);
 			if (section == null) {
 				continue;
 			}
 			String id = key.toLowerCase(Locale.ROOT);
+			if (definitions.containsKey(id)) {
+				warnings.add("Duplicate upgrade id: " + id);
+				continue;
+			}
 			String name = section.getString("name", key);
 			String description = section.getString("description", "");
-			UpgradeDefinition.Type type = parseType(section.getString("type", "LEVEL"));
-			int maxLevel = section.getInt("maxLevel", type == UpgradeDefinition.Type.LEVEL ? 1 : 1);
+			String rawType = section.getString("type", "LEVEL");
+			UpgradeDefinition.Type type = parseType(rawType, warnings, id);
+			if (type == null) {
+				continue;
+			}
+			int maxLevel = type == UpgradeDefinition.Type.LEVEL ? section.getInt("maxLevel", 1) : 1;
+			if (type == UpgradeDefinition.Type.LEVEL && !section.isInt("maxLevel")) {
+				warnings.add("Upgrade " + id + " missing maxLevel.");
+			}
+			if (type != UpgradeDefinition.Type.LEVEL && section.isInt("maxLevel")) {
+				warnings.add("Upgrade " + id + " should not define maxLevel.");
+			}
 			ConfigurationSection costSection = section.getConfigurationSection("cost");
 			double costBase = costSection != null ? costSection.getDouble("c0", 0.0) : section.getDouble("cost", 0.0);
 			double costGrowth = costSection != null ? costSection.getDouble("g", 1.0) : section.getDouble("costGrowth", 1.0);
-			long fixedCost = section.getLong("cost", costSection != null ? 0L : 0L);
+			long fixedCost = type == UpgradeDefinition.Type.CHOICE ? section.getLong("cost", 0L) : 0L;
 			String specializationChoice = section.getString("specializationChoice", null);
 			String specializationRequirement = section.getString("specializationRequirement", null);
+			if (type != UpgradeDefinition.Type.CHOICE && specializationChoice != null) {
+				warnings.add("Upgrade " + id + " should not define specializationChoice.");
+				specializationChoice = null;
+			}
+			if (type == UpgradeDefinition.Type.CHOICE && (specializationChoice == null || specializationChoice.isBlank())) {
+				warnings.add("Upgrade " + id + " missing specializationChoice.");
+			}
+			if (type != UpgradeDefinition.Type.LEVEL && specializationRequirement != null) {
+				warnings.add("Upgrade " + id + " should not define specializationRequirement.");
+				specializationRequirement = null;
+			}
 			int unlocksVendorTier = section.getInt("unlocksVendorTier", 0);
 			int refinementLevel = section.getInt("refinementLevel", 0);
+			if (unlocksVendorTier > 0 && type != UpgradeDefinition.Type.LEVEL) {
+				warnings.add("Upgrade " + id + " should use LEVEL type for vendor unlocks.");
+			}
+			if (refinementLevel > 0 && type != UpgradeDefinition.Type.LEVEL) {
+				warnings.add("Upgrade " + id + " should use LEVEL type for refinement.");
+			}
+			if (unlocksVendorTier > 0 && refinementLevel > 0) {
+				warnings.add("Upgrade " + id + " cannot be both vendor unlock and refinement.");
+			}
 			List<String> prerequisites = section.getStringList("requires");
 			definitions.put(id, new UpgradeDefinition(id, name, description, type, maxLevel, costBase, costGrowth,
 				fixedCost, specializationChoice, specializationRequirement, unlocksVendorTier, refinementLevel, prerequisites));
 		}
+		warnings.addAll(validatePrerequisites());
+		warnings.addAll(validateCycles());
+		for (String warning : warnings) {
+			Bukkit.getLogger().warning("[Ledger] " + warning);
+		}
 	}
 
-	private UpgradeDefinition.Type parseType(String raw) {
+	private UpgradeDefinition.Type parseType(String raw, List<String> warnings, String id) {
 		if (raw == null) {
 			return UpgradeDefinition.Type.LEVEL;
 		}
 		try {
-			return UpgradeDefinition.Type.valueOf(raw.toUpperCase(Locale.ROOT));
+			UpgradeDefinition.Type type = UpgradeDefinition.Type.valueOf(raw.toUpperCase(Locale.ROOT));
+			if (type != UpgradeDefinition.Type.LEVEL && type != UpgradeDefinition.Type.CHOICE) {
+				warnings.add("Upgrade " + id + " has unsupported type: " + raw);
+				return null;
+			}
+			return type;
 		} catch (IllegalArgumentException ex) {
-			return UpgradeDefinition.Type.LEVEL;
+			warnings.add("Upgrade " + id + " has unsupported type: " + raw);
+			return null;
 		}
+	}
+
+	private List<String> validatePrerequisites() {
+		List<String> warnings = new ArrayList<>();
+		for (UpgradeDefinition definition : definitions.values()) {
+			for (String prerequisite : definition.getPrerequisites()) {
+				if (!definitions.containsKey(prerequisite.toLowerCase(Locale.ROOT))) {
+					warnings.add("Upgrade " + definition.getId() + " has unknown prerequisite: " + prerequisite);
+				}
+			}
+		}
+		return warnings;
+	}
+
+	private List<String> validateCycles() {
+		List<String> warnings = new ArrayList<>();
+		Map<String, VisitState> visitStates = new HashMap<>();
+		for (String id : definitions.keySet()) {
+			if (visitStates.getOrDefault(id, VisitState.UNVISITED) == VisitState.UNVISITED) {
+				dfsVisit(id, new ArrayList<>(), visitStates, warnings);
+			}
+		}
+		return warnings;
+	}
+
+	private void dfsVisit(String id, List<String> stack, Map<String, VisitState> visitStates, List<String> warnings) {
+		visitStates.put(id, VisitState.VISITING);
+		stack.add(id);
+		UpgradeDefinition definition = definitions.get(id);
+		if (definition != null) {
+			for (String prerequisite : definition.getPrerequisites()) {
+				String normalized = prerequisite.toLowerCase(Locale.ROOT);
+				VisitState state = visitStates.getOrDefault(normalized, VisitState.UNVISITED);
+				if (state == VisitState.VISITING) {
+					warnings.add("Upgrade prerequisite cycle detected: " + String.join(" -> ", stack) + " -> " + normalized);
+				} else if (state == VisitState.UNVISITED) {
+					dfsVisit(normalized, stack, visitStates, warnings);
+				}
+			}
+		}
+		stack.remove(stack.size() - 1);
+		visitStates.put(id, VisitState.VISITED);
+	}
+
+	private enum VisitState {
+		UNVISITED,
+		VISITING,
+		VISITED
+	}
+
+	private double getLogisticsMaxBonusPercent(int level) {
+		int clampedLevel = Math.max(1, Math.min(5, level));
+		return switch (clampedLevel) {
+			case 1 -> 12.0;
+			case 2 -> 14.0;
+			case 3 -> 16.0;
+			case 4 -> 18.0;
+			default -> 20.0;
+		};
 	}
 
 	private String formatDecimal(double value) {

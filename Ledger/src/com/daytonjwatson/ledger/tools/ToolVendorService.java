@@ -147,9 +147,9 @@ public class ToolVendorService {
 
 	private int getTierLevel(ToolTier tier) {
 		return switch (tier) {
-			case IRON -> 1;
-			case DIAMOND -> 2;
-			case NETHERITE -> 3;
+			case IRON -> 2;
+			case DIAMOND -> 3;
+			case NETHERITE -> 4;
 			default -> 0;
 		};
 	}

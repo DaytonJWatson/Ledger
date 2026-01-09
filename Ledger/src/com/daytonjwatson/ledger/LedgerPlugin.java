@@ -93,7 +93,7 @@ public class LedgerPlugin extends JavaPlugin {
 		this.bankService = new BankService(spawnRegionService, moneyService);
 		this.toolVendorService = new ToolVendorService(configManager, moneyService, spawnRegionService, upgradeService, toolMetaService);
 		this.repairService = new RepairService(configManager, moneyService, toolMetaService, spawnRegionService, toolVendorService);
-		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService);
+		this.mobPayoutService = new MobPayoutService(configManager, marketState, scarcityWindowService, upgradeService);
 		this.animalSellService = new AnimalSellService(configManager, mobPayoutService, moneyService);
 		this.sellValidator = new SellValidator(marketService, toolMetaService);
 		this.loreValueService = new LoreValueService(this, configManager, marketService, sellValidator);
@@ -123,7 +123,7 @@ public class LedgerPlugin extends JavaPlugin {
 		getCommand("tool").setExecutor(new ToolVendorCommand(spawnRegionService, toolVendorService, repairService));
 		getCommand("tools").setExecutor(new MenuCommand(guiManager, MenuId.TOOLS));
 		getCommand("repair").setExecutor(new MenuCommand(guiManager, MenuId.REPAIR));
-		getCommand("ledger").setExecutor(new HubCommand(guiManager, configManager, marketService, mobPayoutService));
+		getCommand("ledger").setExecutor(new HubCommand(guiManager, configManager, marketService, mobPayoutService, upgradeService, moneyService));
 		UpgradeCommand upgradeCommand = new UpgradeCommand(upgradeService);
 		getCommand("upgrade").setExecutor(upgradeCommand);
 		getCommand("upgrades").setExecutor(new MenuCommand(guiManager, MenuId.UPGRADES));

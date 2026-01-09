@@ -8,6 +8,9 @@ import com.daytonjwatson.ledger.market.ItemTagService;
 import com.daytonjwatson.ledger.market.MarketService;
 import com.daytonjwatson.ledger.market.PriceBandTag;
 import com.daytonjwatson.ledger.mobs.MobPayoutService;
+import com.daytonjwatson.ledger.upgrades.UpgradeDefinition;
+import com.daytonjwatson.ledger.upgrades.UpgradeService;
+import com.daytonjwatson.ledger.economy.MoneyService;
 import com.daytonjwatson.ledger.util.ItemKeyUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -15,23 +18,33 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.Bukkit;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.TreeMap;
+import java.util.UUID;
 
 public class HubCommand implements CommandExecutor {
 	private final GuiManager guiManager;
 	private final ConfigManager configManager;
 	private final MarketService marketService;
 	private final MobPayoutService mobPayoutService;
+	private final UpgradeService upgradeService;
+	private final MoneyService moneyService;
 
-	public HubCommand(GuiManager guiManager, ConfigManager configManager, MarketService marketService, MobPayoutService mobPayoutService) {
+	public HubCommand(GuiManager guiManager, ConfigManager configManager, MarketService marketService, MobPayoutService mobPayoutService,
+					  UpgradeService upgradeService, MoneyService moneyService) {
 		this.guiManager = guiManager;
 		this.configManager = configManager;
 		this.marketService = marketService;
 		this.mobPayoutService = mobPayoutService;
+		this.upgradeService = upgradeService;
+		this.moneyService = moneyService;
 	}
 
 	@Override
@@ -49,10 +62,12 @@ public class HubCommand implements CommandExecutor {
 		return switch (subcommand) {
 			case "genprices" -> handleGenerate(sender);
 			case "reloadprices" -> handleReload(sender);
+			case "reload" -> handleReloadUpgrades(sender, args);
 			case "price" -> handlePriceLookup(sender, args);
 			case "gensample" -> handleSample(sender);
+			case "upgrades" -> handleUpgrades(sender, args);
 			default -> {
-				sender.sendMessage(ChatColor.YELLOW + "Usage: /ledger [genprices|reloadprices|price|gensample]");
+				sender.sendMessage(ChatColor.YELLOW + "Usage: /ledger [genprices|reloadprices|reload upgrades|price|gensample|upgrades <player>]");
 				yield true;
 			}
 		};
@@ -139,6 +154,66 @@ public class HubCommand implements CommandExecutor {
 				+ " (" + stats.getCount() + ")");
 		}
 		return true;
+	}
+
+	private boolean handleReloadUpgrades(CommandSender sender, String[] args) {
+		if (args.length < 2 || !"upgrades".equalsIgnoreCase(args[1])) {
+			sender.sendMessage(ChatColor.YELLOW + "Usage: /ledger reload upgrades");
+			return true;
+		}
+		if (!isAdmin(sender)) {
+			sender.sendMessage(ChatColor.RED + "You do not have permission.");
+			return true;
+		}
+		configManager.reloadUpgrades();
+		upgradeService.reloadDefinitions();
+		sender.sendMessage(ChatColor.GREEN + "Reloaded upgrades.yml.");
+		return true;
+	}
+
+	private boolean handleUpgrades(CommandSender sender, String[] args) {
+		if (!isAdmin(sender)) {
+			sender.sendMessage(ChatColor.RED + "You do not have permission.");
+			return true;
+		}
+		if (args.length < 2) {
+			sender.sendMessage(ChatColor.YELLOW + "Usage: /ledger upgrades <player>");
+			return true;
+		}
+		String targetName = args[1];
+		UUID uuid = Bukkit.getOfflinePlayer(targetName).getUniqueId();
+		Map<String, Integer> storedUpgrades = new LinkedHashMap<>(moneyService.getUpgradeLevels(uuid));
+		List<UpgradeDefinition> definitions = upgradeService.getDefinitions().values().stream()
+			.sorted(Comparator.comparing(UpgradeDefinition::getId))
+			.toList();
+		sender.sendMessage(ChatColor.GOLD + "Upgrades for " + targetName + ":");
+		String specialization = upgradeService.getSpecializationChoice(uuid);
+		sender.sendMessage(ChatColor.GRAY + "Specialization: " + (specialization == null ? "None" : specialization.toUpperCase()));
+		sender.sendMessage(ChatColor.GRAY + "Upgrade levels:");
+		for (UpgradeDefinition definition : definitions) {
+			int level = upgradeService.getLevel(uuid, definition.getId());
+			sender.sendMessage(ChatColor.GRAY + " - " + definition.getId() + ": " + level);
+			storedUpgrades.remove(definition.getId());
+		}
+		if (!storedUpgrades.isEmpty()) {
+			sender.sendMessage(ChatColor.GRAY + "Unknown upgrades:");
+			for (Map.Entry<String, Integer> entry : storedUpgrades.entrySet()) {
+				sender.sendMessage(ChatColor.GRAY + " - " + entry.getKey() + ": " + entry.getValue());
+			}
+		}
+		sender.sendMessage(ChatColor.GRAY + "Vendor tiers unlocked: " + formatVendorTiers(uuid));
+		sender.sendMessage(ChatColor.GRAY + "Refinement level: " + upgradeService.getHighestRefinementLevel(uuid));
+		return true;
+	}
+
+	private String formatVendorTiers(UUID uuid) {
+		List<String> tiers = new java.util.ArrayList<>();
+		for (int tier = 2; tier <= 4; tier++) {
+			if (upgradeService.hasVendorTierUnlocked(uuid, tier)) {
+				tiers.add("T" + tier);
+			}
+		}
+		return tiers.isEmpty() ? "None" : String.join(", ", tiers);
 	}
 
 	private boolean isAdmin(CommandSender sender) {
