@@ -68,7 +68,7 @@ public class LoreValueService implements Listener {
 		if (unitPrice <= 0.0) {
 			return;
 		}
-		double price = unitPrice * item.getMaxStackSize();
+		double price = unitPrice * item.getAmount();
 		Double lastPrice = meta.getPersistentDataContainer().get(priceKey, PersistentDataType.DOUBLE);
 		if (lastPrice != null && Math.abs(lastPrice - price) < 0.01) {
 			return;
@@ -128,7 +128,21 @@ public class LoreValueService implements Listener {
 	@EventHandler
 	public void onInventoryClick(InventoryClickEvent event) {
 		if (event.getWhoClicked() instanceof Player player) {
-			updatePlayerInventory(player);
+			ItemStack current = event.getCurrentItem();
+			ItemStack cursor = event.getCursor();
+			clearPriceMeta(current);
+			clearPriceMeta(cursor);
+			ItemStack[] contents = player.getInventory().getContents();
+			for (ItemStack item : contents) {
+				if (item == null || item.getType() == Material.AIR) {
+					continue;
+				}
+				if (item.getItemMeta() instanceof BlockStateMeta) {
+					continue;
+				}
+				clearPriceMeta(item);
+			}
+			plugin.getServer().getScheduler().runTask(plugin, () -> updatePlayerInventory(player));
 		}
 	}
 
