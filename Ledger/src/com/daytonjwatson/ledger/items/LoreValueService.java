@@ -68,7 +68,7 @@ public class LoreValueService implements Listener {
 		if (unitPrice <= 0.0) {
 			return;
 		}
-		double price = unitPrice * item.getAmount();
+		double price = unitPrice * item.getMaxStackSize();
 		Double lastPrice = meta.getPersistentDataContainer().get(priceKey, PersistentDataType.DOUBLE);
 		if (lastPrice != null && Math.abs(lastPrice - price) < 0.01) {
 			return;
